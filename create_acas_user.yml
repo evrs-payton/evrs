@@ -1,0 +1,20 @@
+---
+- name: Create a user and add to sudo group
+  hosts: all
+  become: yes
+  vars_prompt:
+    - name: user_password
+      prompt: "Enter the password for the new user"
+      private: yes
+  tasks:
+    - name: Create a new user
+      user:
+        name: your_username
+        password: "{{ user_password | password_hash('sha512') }}"
+        groups: sudo
+        state: present
+
+    - name: Ensure the sudo group is present
+      group:
+        name: sudo
+        state: present
