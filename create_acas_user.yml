@@ -7,7 +7,7 @@
   tasks:
     - name: Create a new user
       user:
-        name: your_username
+        name: acas_adm
         password: "{{ vault_password | password_hash('sha512') }}"
         groups: sudo
         state: present
