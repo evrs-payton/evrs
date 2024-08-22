@@ -1,0 +1,52 @@
+---
+- name: Install and configure chrony with custom time servers and keys
+  hosts: all
+  become: yes
+
+  vars:
+    # Define the time servers and key ID
+    time_servers:
+      - server: "ntp.usno.navy.mil"
+        key: 18113
+      - server: "ntp.usnogps.navy.mil"
+        key: 18113
+
+    # Define the content of the chrony.keys file (replace with your content)
+    chrony_keys_content: |
+      18113 SHA256 HEX:140937DAD97B5158D431D22DC315CBBB91D808A4BD5D44880E0C826D2CB63849
+      
+  tasks:
+    - name: Install chrony
+      apt:
+        name: chrony
+        state: present
+        update_cache: yes
+
+    - name: Configure chrony.conf with custom time servers
+      copy:
+        dest: /etc/chrony/chrony.conf
+        content: |
+          # Chrony configuration file
+
+          keyfile /etc/chrony/chrony.keys
+          commandkey 18113
+
+          {% for server in time_servers %}
+          server {{ server.server }} key {{ server.key }} iburst
+          {% endfor %}
+
+          driftfile /var/lib/chrony/drift
+          logdir /var/log/chrony
+
+    - name: Update the chrony.keys file with the provided content
+      copy:
+        dest: /etc/chrony/chrony.keys
+        content: "{{ chrony_keys_content }}"
+        owner: root
+        group: root
+        mode: '0640'
+
+    - name: Restart chrony to apply changes
+      service:
+        name: chrony
+        state: restarted
