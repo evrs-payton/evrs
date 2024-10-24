@@ -1,0 +1,59 @@
+---
+- name: Set up Power BI logger script as a service
+  hosts: all
+  become: true
+  tasks:
+  
+    - name: Create directory for Power BI script
+      file:
+        path: /opt/powerbi-logger
+        state: directory
+        mode: '0755'
+
+    - name: Copy Power BI logger script to /opt directory
+      copy:
+        src: /home/acas_admin/stream_logs.py
+        dest: /opt/powerbi-logger/powerbi_logger.py
+        mode: '0755'
+
+    - name: Create systemd service file for Power BI logger
+      copy:
+        dest: /etc/systemd/system/powerbi-logger.service
+        content: |
+          [Unit]
+          Description=Power BI Logger Service
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/bin/python3 /opt/powerbi-logger/powerbi_logger.py
+          WorkingDirectory=/opt/powerbi-logger
+          Restart=always
+          User=root
+          StandardOutput=journal
+          StandardError=journal
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Reload systemd to apply new service
+      command: systemctl daemon-reload
+
+    - name: Enable Power BI logger service
+      systemd:
+        name: powerbi-logger.service
+        enabled: true
+        state: started
+
+    - name: Ensure log directory exists
+      file:
+        path: /var/log
+        state: directory
+        mode: '0755'
+
+    - name: Set permissions for log file
+      file:
+        path: /var/log/powerbi-script.log
+        state: touch
+        mode: '0644'
+
