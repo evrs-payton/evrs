@@ -1,0 +1,55 @@
+---
+- name: Ensure all dependencies for log collection script are installed
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Ensure sysstat (mpstat) is installed
+      apt:
+        name: sysstat
+        state: present
+      tags: sysstat
+
+    - name: Ensure free is available (part of procps package)
+      apt:
+        name: procps
+        state: present
+      tags: free
+
+    - name: Ensure df is available (part of coreutils package)
+      apt:
+        name: coreutils
+        state: present
+      tags: df
+
+    - name: Ensure Docker is installed
+      apt:
+        name: docker.io
+        state: present
+      tags: docker
+
+    - name: Ensure Docker service is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      tags: docker
+
+    - name: Ensure auditd is installed
+      apt:
+        name: auditd
+        state: present
+      tags: auditd
+
+    - name: Ensure Python requests library is installed
+      pip:
+        name: requests
+        state: present
+      tags: python-requests
+
+    - name: Restart Power BI service
+      systemd:
+        name: powerbi
+        state: restarted
+      tags: powerbi
+      ignore_errors: yes
