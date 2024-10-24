@@ -48,7 +48,7 @@
 
     - name: Restart Power BI service
       systemd:
-        name: powerbi
+        name: powerbi-logger
         state: restarted
       tags: powerbi
       ignore_errors: yes
