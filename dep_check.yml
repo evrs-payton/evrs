@@ -4,6 +4,18 @@
   become: yes
 
   tasks:
+    - name: Ensure Python is installed
+      apt:
+        name: python3
+        state: present
+      tags: python
+
+    - name: Ensure pip3 is installed
+      apt:
+        name: python3-pip
+        state: present
+      tags: pip
+
     - name: Ensure sysstat (mpstat) is installed
       apt:
         name: sysstat
@@ -21,26 +33,13 @@
         name: coreutils
         state: present
       tags: df
-
-    - name: Ensure Docker is installed
-      apt:
-        name: docker.io
-        state: present
-      tags: docker
-
-    - name: Ensure Docker service is running
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-      tags: docker
-
+   
     - name: Ensure auditd is installed
       apt:
         name: auditd
         state: present
       tags: auditd
-
+  
     - name: Ensure Python requests library is installed
       pip:
         name: requests
