@@ -12,7 +12,7 @@
 
     - name: Copy Power BI logger script to /opt directory
       copy:
-        src: /home/acas_admin/stream_logs.py
+        src: /home/acas_adm/stream_logs.py
         dest: /opt/powerbi-logger/powerbi_logger.py
         mode: '0755'
 
