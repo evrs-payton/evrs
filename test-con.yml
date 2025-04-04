@@ -6,7 +6,7 @@
 
   tasks:
     - name: Check host connectivity
-      ansible.builtin.ping:
+      ping:
 
     - name: Run apt update to verify sudo works
       ansible.builtin.command: apt update
