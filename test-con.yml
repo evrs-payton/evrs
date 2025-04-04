@@ -1,6 +1,18 @@
 ---
+- name: Check connectivity and verify sudo access with apt update
+  hosts: all
+  become: yes
+  gather_facts: no
 
-- hosts: all
-  gather_facts: false
   tasks:
-    - ping:
+    - name: Check host connectivity
+      ansible.builtin.ping:
+
+    - name: Run apt update to verify sudo works
+      ansible.builtin.command: apt update
+      register: apt_output
+      changed_when: false
+
+    - name: Display output from apt update
+      ansible.builtin.debug:
+        var: apt_output.stdout_lines
