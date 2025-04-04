@@ -1,18 +1,18 @@
 ---
-- name: Check connectivity and verify sudo access with apt update
+- name: Check ping and sudo access
   hosts: all
   become: yes
   gather_facts: no
 
   tasks:
     - name: Check host connectivity
-      ping:
+      ansible.builtin.ping:
 
-    - name: Run apt update to verify sudo works
+    - name: Run apt update with command module (fixed syntax)
       ansible.builtin.command: apt update
       register: apt_output
       changed_when: false
 
-    - name: Display output from apt update
+    - name: Show apt output
       ansible.builtin.debug:
         var: apt_output.stdout_lines
