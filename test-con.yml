@@ -6,13 +6,13 @@
 
   tasks:
     - name: Check host connectivity
-      ansible.builtin.ping:
+      ping:
 
-    - name: Run apt update with command module (fixed syntax)
-      ansible.builtin.command: apt update
+    - name: Run apt update using command
+      command: apt update
       register: apt_output
       changed_when: false
 
-    - name: Show apt output
-      ansible.builtin.debug:
+    - name: Show apt update output
+      debug:
         var: apt_output.stdout_lines
