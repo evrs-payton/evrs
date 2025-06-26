@@ -1,0 +1,22 @@
+- name: Send test email from Ansible
+  hosts: localhost
+  gather_facts: no
+  vars:
+    smtp_host: af-smtp.us.af.mil        # e.g., smtp.office365.com
+    smtp_port: 25
+    email_to: usafea6.evrs.support@us.af.mil  # or shared mailbox / Teams-forwarded inbox
+    email_from: noreply@us.af.mil
+
+  tasks:
+    - name: Send test email
+      mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_to }}"
+        from: "{{ email_from }}"
+        subject: "Ansible Alert: Test Message"
+        body: |
+          This is a test email sent from Ansible.
+          If you're seeing this in your inbox or Teams channel, email delivery is working.
+        secure: never
+        
