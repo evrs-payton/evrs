@@ -1,0 +1,42 @@
+- name: Update and upgrade Ubuntu packages and notify if reboot is required
+  hosts: all
+  become: yes
+  vars:
+    smtp_host: af-smtp.us.af.mil         # Your working relay
+    smtp_port: 25                             # Or 587 if using STARTTLS
+    email_to: usafea6.evrs.support@us.af.mil  # Email/forwarding for Teams flow
+    email_from: noreply@us.af.mil       # Valid internal sender
+
+  tasks:
+    - name: Update the apt package list
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages to the latest version
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+
+    - name: Check if a reboot is required
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+
+    - name: Send reboot required notification email
+      mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_to }}"
+        from: "{{ email_from }}"
+        subject: "⚠️ Reboot Required on {{ inventory_hostname }}"
+        body: |
+          Hello team,
+
+          The server **{{ inventory_hostname }}** has completed package updates,
+          but a reboot is required to apply kernel or system-level changes.
+
+          Please log in and restart the server manually.
+        secure: never  # Change to 'starttls' if needed
+      when: reboot_required.stat.exists
