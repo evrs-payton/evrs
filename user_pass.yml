@@ -25,24 +25,41 @@
       failed_when: false
       changed_when: false
 
-    - name: Process expiration info
+        - name: Process expiration info
       set_fact:
         expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
       vars:
-        expiry_line: "{{ item.stdout_lines | select('search', '^Password expires') | first | regex_replace('^Password expires\\s*:\\s*', '') }}"
-        expiry_date: "{{ (expiry_line != 'never') | ternary(expiry_line | to_datetime('%b %d, %Y'), none) }}"
+        expiry_line: >-
+          {{
+            item.stdout_lines
+            | select('search', '^Password expires')
+            | first
+            | default('')
+            | regex_replace('^Password expires\\s*:\\s*', '')
+          }}
+        expiry_date: >-
+          {{
+            (expiry_line != '' and expiry_line != 'never')
+              | ternary(expiry_line | to_datetime('%b %d, %Y'), none)
+          }}
         today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
-        days_remaining: "{{ (expiry_date is not none) | ternary((expiry_date - today).days, -999) }}"
+        days_remaining: >-
+          {{
+            expiry_date is not none
+              | ternary((expiry_date - today).days, -999)
+          }}
         user_entry: >-
           {{
-            (days_remaining <= 15) | ternary({
-              'username': item.item,
-              'days_remaining': days_remaining,
-              'expiry_date': expiry_date
-            }, omit)
+            (days_remaining <= 15)
+              | ternary({
+                'username': item.item,
+                'days_remaining': days_remaining,
+                'expiry_date': expiry_date
+              }, omit)
           }}
       loop: "{{ chage_output.results }}"
-      when: "'Password expires' in item.stdout"
+      when: item.stdout is defined and 'Password expires' in item.stdout
+
 
     - name: Send email if any accounts are expiring
       mail:
