@@ -30,11 +30,11 @@
         port: "{{ smtp_port }}"
         to: "{{ email_to }}"
         from: "{{ email_from }}"
-        subject: "⚠️ Reboot Required on {{ inventory_hostname }}"
+        subject: "⚠️ Reboot Required on {{ ansible_hostname }}"
         body: |
           Hello team,
 
-          The server **{{ inventory_hostname }}** has completed package updates,
+          The server {{ansible_hostname}} ({{ inventory_hostname }}) has completed package updates,
           but a reboot is required to apply kernel or system-level changes.
 
           Please log in and restart the server manually.
