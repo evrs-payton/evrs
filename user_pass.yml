@@ -36,7 +36,7 @@
             | first
             | default('')
             | regex_replace('^Password expires\\s*:\\s*', '')
-            | regex_replace('\\s+', ' ')  # normalize whitespace
+            | regex_replace('\\s+', ' ')
             | trim
           }}
         expiry_date: >-
