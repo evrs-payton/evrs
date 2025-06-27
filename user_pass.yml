@@ -41,7 +41,7 @@
           }}
         expiry_date: >-
           {{
-            expiry_line != '' and expiry_line != 'never'
+            (expiry_line != '' and expiry_line != 'never')
               | ternary(expiry_line | to_datetime('%b %d, %Y'), none)
           }}
         today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
@@ -61,6 +61,7 @@
           }}
       loop: "{{ chage_output.results }}"
       when: item.stdout is defined and 'Password expires' in item.stdout
+
 
 
 
