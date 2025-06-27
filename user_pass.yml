@@ -25,24 +25,16 @@
       failed_when: false
       changed_when: false
 
-    - name: Process expiration info
+       - name: Process expiration info
       set_fact:
         expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
       vars:
-        expiry_line: >-
-          {{
-            item.stdout_lines
-            | select('search', '^Password expires')
-            | first
-            | default('')
-            | regex_replace('^Password expires\\s*:\\s*', '')
-            | regex_replace('\\s+', ' ')
-            | trim
-          }}
+        expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
+        expiry_value: "{{ expiry_line_raw.split(':', 1)[1] | trim }}"
         expiry_date: >-
           {{
-            (expiry_line != '' and expiry_line != 'never')
-              | ternary(expiry_line | to_datetime('%b %d, %Y'), none)
+            (expiry_value != '' and expiry_value != 'never')
+              | ternary(expiry_value | to_datetime('%b %d, %Y'), none)
           }}
         today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
         days_remaining: >-
@@ -61,6 +53,7 @@
           }}
       loop: "{{ chage_output.results }}"
       when: item.stdout is defined and 'Password expires' in item.stdout
+ 
 
 
 
