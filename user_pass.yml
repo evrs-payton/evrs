@@ -36,10 +36,12 @@
             | first
             | default('')
             | regex_replace('^Password expires\\s*:\\s*', '')
+            | regex_replace('\\s+', ' ')  # normalize whitespace
+            | trim
           }}
         expiry_date: >-
           {{
-            (expiry_line != '' and expiry_line != 'never')
+            expiry_line != '' and expiry_line != 'never'
               | ternary(expiry_line | to_datetime('%b %d, %Y'), none)
           }}
         today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
@@ -59,6 +61,7 @@
           }}
       loop: "{{ chage_output.results }}"
       when: item.stdout is defined and 'Password expires' in item.stdout
+
 
 
     - name: Send email if any accounts are expiring
