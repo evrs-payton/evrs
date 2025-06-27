@@ -1,0 +1,63 @@
+- name: Check password expirations for /home users and notify
+  hosts: all
+  become: yes
+  vars:
+    smtp_host: af-smtp.us.af.mil         # Your working relay
+    smtp_port: 25                             # Or 587 if using STARTTLS
+    email_to: usafea6.evrs.support@us.af.mil  # Email/forwarding for Teams flow
+    email_from: noreply@us.af.mil       # Valid internal sender
+
+  tasks:
+
+    - name: Get usernames from /home
+      shell: "ls -1 /home"
+      register: home_users
+      changed_when: false
+
+    - name: Initialize list for expiring accounts
+      set_fact:
+        expiring_accounts: []
+
+    - name: Check password expiration for each user
+      command: "chage -l {{ item }}"
+      register: chage_output
+      loop: "{{ home_users.stdout_lines }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Process expiration info
+      set_fact:
+        expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
+      vars:
+        expiry_line: "{{ item.stdout_lines | select('search', '^Password expires') | first | regex_replace('^Password expires\\s*:\\s*', '') }}"
+        expiry_date: "{{ (expiry_line != 'never') | ternary(expiry_line | to_datetime('%b %d, %Y'), none) }}"
+        today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
+        days_remaining: "{{ (expiry_date is not none) | ternary((expiry_date - today).days, -999) }}"
+        user_entry: >-
+          {{
+            (days_remaining <= 15) | ternary({
+              'username': item.item,
+              'days_remaining': days_remaining,
+              'expiry_date': expiry_date
+            }, omit)
+          }}
+      loop: "{{ chage_output.results }}"
+      when: "'Password expires' in item.stdout"
+
+    - name: Send email if any accounts are expiring
+      mail:
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        to: "{{ email_to }}"
+        from: "{{ email_from }}"
+        subject: "⚠️ Expiring Passwords on {{ ansible_hostname }}"
+        body: |
+          The following user accounts on {{ ansible_hostname }} have expired or are expiring soon:
+
+          {% for acct in expiring_accounts %}
+          - {{ acct.username }}: expires {{ acct.expiry_date.strftime('%Y-%m-%d') }}, in {{ acct.days_remaining }} day(s)
+          {% endfor %}
+
+          Please rotate these passwords to avoid automation failures or account lockouts.
+        secure: never
+      when: expiring_accounts | length > 0
