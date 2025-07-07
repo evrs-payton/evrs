@@ -2,10 +2,10 @@
   hosts: all
   become: yes
   vars:
-    smtp_host: relay.internal.company
+    smtp_host: af-smtp.us.af.mil
     smtp_port: 25
-    email_to: security-team@yourcompany.com
-    email_from: ansible@yourcompany.com
+    email_to: usafea6.evrs.support@us.af.mil
+    email_from: noreply@us.af.mil
 
   tasks:
     - name: Get usernames from /home
@@ -31,11 +31,8 @@
         expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
         expiry_value: >-
           {{
-            expiry_line_raw is match('^Password expires\\s*:\\s*.+')
-              | ternary(
-                  expiry_line_raw.split(':', 1)[1] | trim,
-                  ''
-              )
+            (':' in expiry_line_raw)
+              | ternary(expiry_line_raw.split(':', 1)[1] | regex_replace('\\s+', ' ') | trim, '')
           }}
         expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
         today_str: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
@@ -52,7 +49,7 @@
               }, omit)
           }}
       loop: "{{ chage_output.results }}"
-      when: item.stdout is defined and 'Password expires' in item.stdout
+      when: item.stdout is defined and item.stdout_lines is defined
 
     - name: Send email if any accounts are expiring
       mail:
@@ -65,7 +62,7 @@
           The following user accounts on {{ ansible_hostname }} have expired or are expiring soon:
 
           {% for acct in expiring_accounts %}
-          - {{ acct.username }}: expires {{ acct.expiry_date.strftime('%Y-%m-%d') }}, in {{ acct.days_remaining }} day(s)
+          - {{ acct.username }}: expires {{ acct.expiry_date.strftime('%Y-%m-%d') if acct.expiry_date is not none else 'unknown' }}, in {{ acct.days_remaining }} day(s)
           {% endfor %}
 
           Please rotate these passwords to avoid account lockouts.
