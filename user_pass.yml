@@ -2,7 +2,7 @@
   hosts: all
   become: yes
   vars:
-    smtp_host: relay.internal.company     # Replace with your SMTP relay
+    smtp_host: relay.internal.company
     smtp_port: 25
     email_to: security-team@yourcompany.com
     email_from: ansible@yourcompany.com
@@ -29,18 +29,25 @@
         expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
       vars:
         expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
-        expiry_value: "{{ expiry_line_raw.split(':', 1)[1] | trim }}"
+        expiry_value: >-
+          {{
+            expiry_line_raw is match('^Password expires\\s*:\\s*.+')
+              | ternary(
+                  expiry_line_raw.split(':', 1)[1] | trim,
+                  ''
+              )
+          }}
+        expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
         today_str: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
         today: "{{ today_str | to_datetime('%Y-%m-%d') }}"
-        expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
         expiry_date: "{{ expiry_valid | ternary(expiry_value | to_datetime('%b %d, %Y'), none) }}"
-        days_remaining: "{{ expiry_date is not none | ternary((expiry_date - today).days, -999) }}"
+        days_remaining: "{{ expiry_valid | ternary((expiry_date - today).days | int, -999) }}"
         user_entry: >-
           {{
-            (expiry_valid and (days_remaining | int <= 15))
+            (expiry_valid and (days_remaining <= 15))
               | ternary({
                 'username': item.item,
-                'days_remaining': days_remaining | int,
+                'days_remaining': days_remaining,
                 'expiry_date': expiry_date
               }, omit)
           }}
