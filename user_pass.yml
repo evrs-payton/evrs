@@ -31,16 +31,19 @@
       vars:
         expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
         expiry_value: "{{ expiry_line_raw.split(':', 1)[1] | trim }}"
-        expiry_date: >-
+        expiry_date_raw: >-
           {{
             (expiry_value != '' and expiry_value != 'never')
-              | ternary(expiry_value | to_datetime('%b %d, %Y'), none)
+              | ternary(expiry_value, omit)
           }}
-        today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
+        today_str: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
         days_remaining: >-
           {{
-            expiry_date is not none
-              | ternary((expiry_date - today).days, -999)
+            expiry_date_raw is defined
+              | ternary(
+                  ((expiry_date_raw | to_datetime('%b %d, %Y')) - (today_str | to_datetime('%Y-%m-%d'))).days,
+                  -999
+              )
           }}
         user_entry: >-
           {{
@@ -48,11 +51,12 @@
               | ternary({
                 'username': item.item,
                 'days_remaining': days_remaining,
-                'expiry_date': expiry_date
+                'expiry_date': expiry_date_raw | to_datetime('%b %d, %Y')
               }, omit)
           }}
       loop: "{{ chage_output.results }}"
       when: item.stdout is defined and 'Password expires' in item.stdout
+
  
 
 
