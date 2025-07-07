@@ -36,19 +36,25 @@
       loop_control:
         label: "{{ item.item }}"
       register: sanitized_expiry
-
+      
     - name: Process expiration info
       vars:
         today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
+      loop: "{{ chage_output.results }}"
+      loop_control:
+        label: "{{ item.item }}"
       block:
-        - name: Set facts for each user
+        - name: Extract and evaluate password expiration line
           set_fact:
+            expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
+            expiry_value: >-
+              {{
+                (':' in expiry_line_raw)
+                  | ternary(expiry_line_raw.split(':', 1)[1] | regex_replace('\\s+', ' ') | trim, '')
+              }}
             expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
             expiry_date: "{{ expiry_valid | ternary(expiry_value | to_datetime('%b %d, %Y'), none) }}"
             current_username: "{{ item.item }}"
-          loop: "{{ chage_output.results }}"
-          loop_control:
-            label: "{{ item.item }}"
 
         - name: Calculate days remaining if valid
           set_fact:
@@ -66,7 +72,7 @@
           vars:
             user_entry: >-
               {{
-                (days_remaining <= 15)
+                (expiry_valid and (days_remaining <= 15))
                   | ternary({
                     'username': current_username,
                     'days_remaining': days_remaining,
@@ -78,6 +84,8 @@
         - name: Debug failure
           debug:
             msg: "Failed to process {{ item.item }}. Output: {{ item.stdout_lines | default('none') }}"
+
+    
 
     - name: Send email if any accounts are expiring
       mail:
