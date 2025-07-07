@@ -35,22 +35,42 @@
           }}
         expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
         expiry_date: "{{ expiry_valid | ternary(expiry_value | to_datetime('%b %d, %Y'), none) }}"
-        days_remaining: "{{ (expiry_date - today).days | int if expiry_valid else -999 }}"
-        user_entry: >-
-          {{
-            (expiry_valid and (days_remaining <= 15))
-              | ternary({
-                'username': item.item,
-                'days_remaining': days_remaining,
-                'expiry_date': expiry_date
-              }, omit)
-          }}
+        current_username: "{{ item.item }}"
       set_fact:
-        expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
+        expiry_line_raw: "{{ expiry_line_raw }}"
+        expiry_value: "{{ expiry_value }}"
+        expiry_valid: "{{ expiry_valid }}"
+        expiry_date: "{{ expiry_date }}"
+        current_username: "{{ current_username }}"
       loop: "{{ chage_output.results }}"
       loop_control:
         label: "{{ item.item }}"
       when: item.stdout_lines is defined
+
+    - name: Calculate days remaining if valid
+      set_fact:
+        days_remaining: "{{ (expiry_date - today).days | int }}"
+      when: expiry_valid
+
+    - name: Default days remaining if not valid
+      set_fact:
+        days_remaining: -999
+      when: not expiry_valid
+
+    - name: Append user to expiring_accounts if within threshold
+      set_fact:
+        expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
+      vars:
+        user_entry: >-
+          {{
+            (expiry_valid and (days_remaining <= 15))
+              | ternary({
+                'username': current_username,
+                'days_remaining': days_remaining,
+                'expiry_date': expiry_date
+              }, omit)
+          }}
+      when: expiry_valid
 
     - name: Send email if any accounts are expiring
       mail:
