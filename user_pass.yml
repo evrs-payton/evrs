@@ -6,6 +6,7 @@
     smtp_port: 25
     email_to: usafea6.evrs.support@us.af.mil
     email_from: noreply@us.af.mil
+    today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
 
   tasks:
     - name: Get usernames from /home
@@ -24,53 +25,32 @@
       failed_when: false
       changed_when: false
 
-    - name: Process expiration info
+    - name: Extract and evaluate expiration for each user
       vars:
-        today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
+        expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
+        expiry_value: >-
+          {{
+            (':' in expiry_line_raw)
+              | ternary(expiry_line_raw.split(':', 1)[1] | regex_replace('\\s+', ' ') | trim, '')
+          }}
+        expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
+        expiry_date: "{{ expiry_valid | ternary(expiry_value | to_datetime('%b %d, %Y'), none) }}"
+        days_remaining: "{{ (expiry_date - today).days | int if expiry_valid else -999 }}"
+        user_entry: >-
+          {{
+            (expiry_valid and (days_remaining <= 15))
+              | ternary({
+                'username': item.item,
+                'days_remaining': days_remaining,
+                'expiry_date': expiry_date
+              }, omit)
+          }}
+      set_fact:
+        expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
       loop: "{{ chage_output.results }}"
       loop_control:
         label: "{{ item.item }}"
-      block:
-        - name: Extract and evaluate password expiration line
-          set_fact:
-            expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
-            expiry_value: >-
-              {{
-                (':' in expiry_line_raw)
-                  | ternary(expiry_line_raw.split(':', 1)[1] | regex_replace('\\s+', ' ') | trim, '')
-              }}
-            expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
-            expiry_date: "{{ expiry_valid | ternary(expiry_value | to_datetime('%b %d, %Y'), none) }}"
-            current_username: "{{ item.item }}"
-
-        - name: Calculate days remaining if valid
-          set_fact:
-            days_remaining: "{{ (expiry_date - today).days | int }}"
-          when: expiry_valid
-
-        - name: Default days remaining if not valid
-          set_fact:
-            days_remaining: -999
-          when: not expiry_valid
-
-        - name: Append to expiring_accounts if within threshold
-          set_fact:
-            expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
-          vars:
-            user_entry: >-
-              {{
-                (expiry_valid and (days_remaining <= 15))
-                  | ternary({
-                    'username': current_username,
-                    'days_remaining': days_remaining,
-                    'expiry_date': expiry_date
-                  }, omit)
-              }}
-          when: expiry_valid
-      rescue:
-        - name: Debug failure
-          debug:
-            msg: "Failed to process {{ item.item }}. Output: {{ item.stdout_lines | default('none') }}"
+      when: item.stdout_lines is defined
 
     - name: Send email if any accounts are expiring
       mail:
