@@ -2,13 +2,12 @@
   hosts: all
   become: yes
   vars:
-    smtp_host: af-smtp.us.af.mil         # Your working relay
-    smtp_port: 25                             # Or 587 if using STARTTLS
-    email_to: usafea6.evrs.support@us.af.mil  # Email/forwarding for Teams flow
-    email_from: noreply@us.af.mil       # Valid internal sender
+    smtp_host: relay.internal.company     # Replace with your SMTP relay
+    smtp_port: 25
+    email_to: security-team@yourcompany.com
+    email_from: ansible@yourcompany.com
 
   tasks:
-
     - name: Get usernames from /home
       shell: "ls -1 /home"
       register: home_users
@@ -31,36 +30,22 @@
       vars:
         expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
         expiry_value: "{{ expiry_line_raw.split(':', 1)[1] | trim }}"
-        expiry_date_raw: >-
-          {{
-            (expiry_value != '' and expiry_value != 'never')
-              | ternary(expiry_value, omit)
-          }}
         today_str: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
-        days_remaining: >-
-          {{
-            expiry_date_raw is defined
-              | ternary(
-                  ((expiry_date_raw | to_datetime('%b %d, %Y')) - (today_str | to_datetime('%Y-%m-%d'))).days,
-                  -999
-              )
-          }}
+        today: "{{ today_str | to_datetime('%Y-%m-%d') }}"
+        expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
+        expiry_date: "{{ expiry_valid | ternary(expiry_value | to_datetime('%b %d, %Y'), none) }}"
+        days_remaining: "{{ expiry_date is not none | ternary((expiry_date - today).days, -999) }}"
         user_entry: >-
           {{
-            (days_remaining | int <= 15)
+            (expiry_valid and (days_remaining | int <= 15))
               | ternary({
                 'username': item.item,
                 'days_remaining': days_remaining | int,
-                'expiry_date': expiry_date_raw | to_datetime('%b %d, %Y')
+                'expiry_date': expiry_date
               }, omit)
           }}
       loop: "{{ chage_output.results }}"
       when: item.stdout is defined and 'Password expires' in item.stdout
-
- 
-
-
-
 
     - name: Send email if any accounts are expiring
       mail:
@@ -76,6 +61,6 @@
           - {{ acct.username }}: expires {{ acct.expiry_date.strftime('%Y-%m-%d') }}, in {{ acct.days_remaining }} day(s)
           {% endfor %}
 
-          Please rotate these passwords to avoid automation failures or account lockouts.
+          Please rotate these passwords to avoid account lockouts.
         secure: never
       when: expiring_accounts | length > 0
