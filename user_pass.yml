@@ -47,10 +47,10 @@
           }}
         user_entry: >-
           {{
-            (days_remaining <= 15)
+            (days_remaining | int <= 15)
               | ternary({
                 'username': item.item,
-                'days_remaining': days_remaining,
+                'days_remaining': days_remaining | int,
                 'expiry_date': expiry_date_raw | to_datetime('%b %d, %Y')
               }, omit)
           }}
