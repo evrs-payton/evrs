@@ -24,19 +24,6 @@
       failed_when: false
       changed_when: false
 
-    - name: Extract and sanitize expiry line
-      set_fact:
-        expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
-        expiry_value: >-
-          {{
-            (':' in expiry_line_raw)
-              | ternary(expiry_line_raw.split(':', 1)[1] | regex_replace('\\s+', ' ') | trim, '')
-          }}
-      loop: "{{ chage_output.results }}"
-      loop_control:
-        label: "{{ item.item }}"
-      register: sanitized_expiry
-      
     - name: Process expiration info
       vars:
         today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
@@ -84,8 +71,6 @@
         - name: Debug failure
           debug:
             msg: "Failed to process {{ item.item }}. Output: {{ item.stdout_lines | default('none') }}"
-
-    
 
     - name: Send email if any accounts are expiring
       mail:
