@@ -2,10 +2,10 @@
   hosts: all
   become: yes
   vars:
-    smtp_host: relay.internal.company
+    smtp_host: af-smtp.us.af.mil
     smtp_port: 25
-    email_to: security-team@yourcompany.com
-    email_from: ansible@yourcompany.com
+    email_to: usafea6.evrs.support@us.af.mil
+    email_from: noreply@us.af.mil
     today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
 
   tasks:
@@ -14,20 +14,7 @@
       register: home_users
       changed_when: false
 
-    - name: Initialize list for expiring accounts
-      set_fact:
-        expiring_accounts: []
-
-    - name: Check password expiration for each user
-      command: "chage -l {{ item }}"
-      register: chage_output
-      loop: "{{ home_users.stdout_lines }}"
-      failed_when: false
-      changed_when: false
-
-    - name: Process expiration and collect warnings
-      set_fact:
-        expiring_accounts: "{{ expiring_accounts + [user_entry] }}"
+    - name: Check password expiration for each user and collect results
       vars:
         expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
         expiry_value: >-
@@ -36,25 +23,30 @@
               | ternary(expiry_line_raw.split(':', 1)[1] | regex_replace('\\s+', ' ') | trim, '')
           }}
         expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
-        expiry_date_obj: >-
+        expiry_date: >-
           {{ expiry_value | to_datetime('%b %d, %Y') if expiry_valid else none }}
         days_remaining: >-
-          {{ (expiry_date_obj - today).days | int if expiry_valid else -999 }}
-        user_entry: >-
-          {{
-            (expiry_valid and (days_remaining <= 15))
-              | ternary({
-                'username': item.item,
-                'days_remaining': days_remaining,
-                'expiry_date': expiry_date_obj
-              }, omit)
-          }}
-      when: item.stdout_lines is defined and
-            (expiry_value != '' and expiry_value != 'never') and
-            ((expiry_value | to_datetime('%b %d, %Y') - today).days <= 15)
+          {{ (expiry_date - today).days if expiry_valid else -999 }}
+      set_fact:
+        password_results: "{{ password_results | default([]) + [ {
+          'username': item.item,
+          'expiry_valid': expiry_valid,
+          'expiry_date': expiry_date,
+          'days_remaining': days_remaining
+        } ] }}"
       loop: "{{ chage_output.results }}"
       loop_control:
         label: "{{ item.item }}"
+      when: item.stdout_lines is defined
+
+    - name: Collect expiring accounts (expired or expiring within 15 days)
+      set_fact:
+        expiring_accounts: >-
+          {{ password_results
+               | selectattr('expiry_valid', 'equalto', true)
+               | selectattr('days_remaining', 'le', 15)
+               | list
+          }}
 
     - name: Send email if any accounts are expiring
       mail:
