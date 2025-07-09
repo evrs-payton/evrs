@@ -15,10 +15,12 @@
         # Get users with /home dirs in passwd AND actually existing directories
         awk -F: '$6 ~ /^\/home\// {print $1}' /etc/passwd | 
         while read user; do 
-          [ -d "$(getent passwd $user | cut -d: -f6)" ] && echo $user; 
-        done
+          homedir=$(getent passwd "$user" | cut -d: -f6)
+          [ -d "$homedir" ] && echo "$user"; 
+        done || true  # Force success even if some users fail
       register: valid_home_users
       changed_when: false
+      failed_when: false  # Don't fail on non-zero return code
 
     - name: Check password expiration for valid home users
       block:
