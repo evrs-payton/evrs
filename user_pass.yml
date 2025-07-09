@@ -64,7 +64,7 @@
               {% endfor %}
 
         - name: Send email notification
-          community.general.mail:
+          mail:
             host: "{{ smtp_server }}"
             port: "{{ smtp_port }}"
             to: "{{ admin_email }}"
