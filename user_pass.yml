@@ -2,10 +2,10 @@
   hosts: all
   become: yes
   vars:
-    smtp_host: af-smtp.us.af.mil
+    smtp_host: relay.internal.company       # Replace with your SMTP relay
     smtp_port: 25
-    email_to: usafea6.evrs.support@us.af.mil
-    email_from: noreply@us.af.mil
+    email_to: security-team@yourcompany.com # Replace with your recipient
+    email_from: ansible@yourcompany.com     # Replace with your sender
     today: "{{ lookup('pipe', 'date +%Y-%m-%d') | to_datetime('%Y-%m-%d') }}"
 
   tasks:
@@ -25,8 +25,8 @@
       failed_when: false
       changed_when: false
 
-    - name: Extract and evaluate expiration for each user
-      vars:
+    - name: Extract raw expiry line and value
+      set_fact:
         expiry_line_raw: "{{ item.stdout_lines | select('search', '^Password expires') | first | default('') }}"
         expiry_value: >-
           {{
@@ -34,18 +34,15 @@
               | ternary(expiry_line_raw.split(':', 1)[1] | regex_replace('\\s+', ' ') | trim, '')
           }}
         expiry_valid: "{{ expiry_value != '' and expiry_value != 'never' }}"
-        expiry_date: "{{ expiry_valid | ternary(expiry_value | to_datetime('%b %d, %Y'), none) }}"
         current_username: "{{ item.item }}"
-      set_fact:
-        expiry_line_raw: "{{ expiry_line_raw }}"
-        expiry_value: "{{ expiry_value }}"
-        expiry_valid: "{{ expiry_valid }}"
-        expiry_date: "{{ expiry_date }}"
-        current_username: "{{ current_username }}"
       loop: "{{ chage_output.results }}"
       loop_control:
         label: "{{ item.item }}"
-      when: item.stdout_lines is defined
+
+    - name: Set expiry_date only if valid
+      set_fact:
+        expiry_date: "{{ expiry_value | to_datetime('%b %d, %Y') }}"
+      when: expiry_valid
 
     - name: Calculate days remaining if valid
       set_fact:
