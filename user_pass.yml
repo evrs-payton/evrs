@@ -1,79 +1,101 @@
 ---
-- name: Check user password expiration and notify
-  hosts: all  # Change this to target your servers
+- name: Check password expiration for users with /home directories
+  hosts: all
   become: true
   vars:
     warning_days: 15
-    admin_email: usafea6.evrs.support@us.af.mil  # Set your email address here
-    smtp_server: af-smtp.us.af.mil       # Set your SMTP server
-    smtp_port: 25                         # Set your SMTP port
-    smtp_sender: noreply@us.af.mil # Set sender email
+    admin_email: "usafea6.evrs.support@us.af.mil"
+    smtp_server: "af-smtp.us.af.mil"
+    smtp_port: 25
+    smtp_sender: "noreply@us.af.mil"
 
   tasks:
-    - name: Get list of users with home directories in /home
+    - name: Get users with valid /home directories
       shell: |
-        awk -F: '{if ($6 ~ /^\/home\//) print $1}' /etc/passwd
-      register: home_users
+        # Get users with /home dirs in passwd AND actually existing directories
+        awk -F: '$6 ~ /^\/home\// {print $1}' /etc/passwd | 
+        while read user; do 
+          [ -d "$(getent passwd $user | cut -d: -f6)" ] && echo $user; 
+        done
+      register: valid_home_users
       changed_when: false
 
-    - name: Check password expiration for each user
+    - name: Check password expiration for valid home users
       block:
         - name: Get password expiration info
           shell: |
-            chage -l {{ item }} | awk -F: '/Password expires/ {print $2}' | grep -v "never"
+            chage -l {{ item }} 2>/dev/null | 
+            awk -F: '/Password expires/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}'
           register: password_expiry
           changed_when: false
           ignore_errors: yes
-          loop: "{{ home_users.stdout_lines }}"
+          loop: "{{ valid_home_users.stdout_lines }}"
 
         - name: Process expiration dates
           set_fact:
             expiring_users: |
               {% set result = [] %}
-              {% for user in home_users.stdout_lines %}
-                {% set expiry_output = password_expiry.results[loop.index0] %}
-                {% if expiry_output.stdout != "" %}
-                  {% set expiry_date = expiry_output.stdout.strip() %}
-                  {% if expiry_date != "never" %}
-                    {% set expiry_epoch = ansible_date_time.epoch|int %}
-                    {% if "never" not in expiry_date %}
-                      {% set expiry_epoch = expiry_date | to_datetime('%b %d, %Y') | int %}
-                    {% endif %}
-                    {% set days_remaining = (expiry_epoch - ansible_date_time.epoch|int) / 86400 | round %}
-                    {% if days_remaining <= warning_days %}
-                      {% set _ = result.append({'user': user, 'expiry_date': expiry_date, 'days_remaining': days_remaining|int}) %}
-                    {% endif %}
+              {% for user in valid_home_users.stdout_lines %}
+                {% set expiry_data = password_expiry.results[loop.index0] %}
+                {% if expiry_data.stdout != "" and expiry_data.stdout != "never" %}
+                  {% set expiry_date = expiry_data.stdout.strip() %}
+                  {% set expiry_epoch = expiry_date | to_datetime('%b %d, %Y') | int %}
+                  {% set days_remaining = (expiry_epoch - ansible_date_time.epoch|int) / 86400 | round %}
+                  {% if days_remaining <= warning_days %}
+                    {% set _ = result.append({
+                        'user': user,
+                        'expiry_date': expiry_date,
+                        'days_remaining': days_remaining|int,
+                        'status': 'EXPIRED' if days_remaining < 0 else 'WARNING'
+                    }) %}
                   {% endif %}
                 {% endif %}
               {% endfor %}
               {{ result }}
 
-      when: home_users.stdout_lines | length > 0
+      when: valid_home_users.stdout_lines | length > 0
 
-    - name: Send email notification if expiring users found
-      block:
-        - name: Create email body
-          set_fact:
-            email_body: |
-              The following user passwords are expired or will expire within {{ warning_days }} days:
-              
-              {% for user in expiring_users %}
-              - Username: {{ user.user }}
-                Expiry Date: {{ user.expiry_date }}
-                Days Remaining: {{ user.days_remaining }}
-              {% endfor %}
+    - name: Create email body if expiring users found
+      set_fact:
+        email_body: |
+          Password Expiration Report - {{ ansible_hostname }}
+          Generated on: {{ ansible_date_time.iso8601 }}
+          
+          {% if expiring_users | selectattr('status', 'equalto', 'EXPIRED') | list | count > 0 %}
+          EXPIRED PASSWORDS:
+          {% for user in expiring_users | selectattr('status', 'equalto', 'EXPIRED') %}
+          - User: {{ user.user }}
+            Expired on: {{ user.expiry_date }}
+            Days expired: {{ -user.days_remaining }}
+          {% endfor %}
+          {% endif %}
+          
+          {% if expiring_users | selectattr('status', 'equalto', 'WARNING') | list | count > 0 %}
+          PASSWORDS EXPIRING SOON (within {{ warning_days }} days):
+          {% for user in expiring_users | selectattr('status', 'equalto', 'WARNING') %}
+          - User: {{ user.user }}
+            Expires on: {{ user.expiry_date }}
+            Days remaining: {{ user.days_remaining }}
+          {% endfor %}
+          {% endif %}
+      when: expiring_users | length > 0
 
-        - name: Send email notification
-          mail:
-            host: "{{ smtp_server }}"
-            port: "{{ smtp_port }}"
-            to: "{{ admin_email }}"
-            subject: "Password Expiration Alert on {{ ansible_hostname }}"
-            body: "{{ email_body }}"
-            from: "{{ smtp_sender }}"
+    - name: Send email notification
+      mail:
+        host: "{{ smtp_server }}"
+        port: "{{ smtp_port }}"
+        to: "{{ admin_email }}"
+        subject: "Password Expiration Alert on {{ ansible_hostname }}"
+        body: "{{ email_body }}"
+        from: "{{ smtp_sender }}"
       when: expiring_users | length > 0
 
     - name: Display message if no expiring passwords found
       debug:
-        msg: "No user passwords are expiring within {{ warning_days }} days."
-      when: expiring_users | length == 0 and home_users.stdout_lines | length > 0
+        msg: "No password expirations found among /home users within {{ warning_days }} days."
+      when: expiring_users | length == 0 and valid_home_users.stdout_lines | length > 0
+
+    - name: Display message if no /home users found
+      debug:
+        msg: "No users with valid home directories in /home found."
+      when: valid_home_users.stdout_lines | length == 0
