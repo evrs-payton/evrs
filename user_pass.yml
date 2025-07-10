@@ -1,5 +1,5 @@
 ---
-- name: Check password expiration for all users in the sudo group
+- name: Check password expiration date for all users in the sudo group
   hosts: all
   become: yes
   gather_facts: no
@@ -10,15 +10,13 @@
         getent group sudo | awk -F: '{print $4}' | tr ',' '\n' | sort | uniq | grep -v '^$'
       register: sudo_users
 
-    - name: Check password expiration for each sudo user
-      shell: chage -l {{ item }}
+    - name: Get password expiration date for each sudo user
+      shell: chage -l {{ item }} | grep "^Password expires"
       loop: "{{ sudo_users.stdout_lines }}"
       register: chage_results
 
-    - name: Print password expiration for each sudo user
+    - name: Print password expiration date for each sudo user
       debug:
-        msg: |
-          User: {{ item.item }}
-          Password Info:
-          {{ item.stdout }}
+        msg: "User: {{ item.item }} | {{ item.stdout }}"
       loop: "{{ chage_results.results }}"
+
