@@ -1,8 +1,8 @@
 ---
-- name: Check password expiration date for all users in the sudo group
+- name: Gather sudo password expiry info from all hosts
   hosts: all
   become: yes
-  gather_facts: no
+  gather_facts: yes
 
   tasks:
     - name: Get sudo group entry using getent module
@@ -21,8 +21,52 @@
       register: chage_results
       changed_when: false
 
-    - name: Print password expiration date for each sudo user
-      ansible.builtin.debug:
-        msg: "{{ item.item }}: {{ item.stdout }}"
+    - name: Format this host's info for email
+      set_fact:
+        host_lines: >-
+          {{
+            host_lines | default([]) +
+            [ item.item + ',' + (item.stdout.split(":")|length > 1 and item.stdout.split(":")[1]|trim or "unknown") ]
+          }}
       loop: "{{ chage_results.results }}"
+
+    - name: Set fact for all hosts
+      set_fact:
+        host_result: "{{ ansible_hostname }},{{ host_lines | default([]) | join(';') }}"
+
+    - name: Add host result to global results
+      set_fact:
+        all_results: "{{ all_results | default([]) + [host_result] }}"
+      delegate_to: localhost
+      run_once: true
+
+- name: Send consolidated email with all hosts' sudo user expiry info
+  hosts: localhost
+  gather_facts: no
+  vars:
+    mail_to: "youremail@example.com"
+    mail_from: "ansible@example.com"
+    mail_subject: "All Hosts Sudo Users Password Expiry Report"
+    smtp_host: "your.smtp.relay"
+    smtp_port: 25
+  tasks:
+    - name: Assemble email body from all hosts
+      set_fact:
+        mail_body: |
+          Hostname,Username,Password Expires
+          {%- for result in hostvars.values() if 'host_lines' in result %}
+          {%- for line in result['host_lines'] %}
+          {{ result['inventory_hostname'] }},{{ line.split(',')[0] }},{{ line.split(',')[1] }}
+          {%- endfor %}
+          {%- endfor %}
+
+    - name: Send the results email via SMTP relay
+      community.general.mail:
+        host: "{{ af-smtp.us.af.mil }}"
+        port: "{{ 25 }}"
+        to: "{{ usafea6.evrs.support@us.af.mil }}"
+        from: "{{ noreply@us.af.mil }}"
+        subject: "{{ mail_subject }}"
+        body: "{{ mail_body }}"
+        subtype: plain
 
