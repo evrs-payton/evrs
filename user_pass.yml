@@ -5,15 +5,15 @@
   gather_facts: no
 
   tasks:
-    - name: Get list of users in the sudo group
-      shell: |
-        getent group sudo | awk -F: '{print $4}' | tr ',' '\n' | sort | uniq | grep -v '^$'
-      register: sudo_users
+    - name: Get list of users in the sudo group using getent
+      set_fact:
+        sudo_users: "{{ lookup('ansible.builtin.getent', 'group', 'sudo').split(':')[3].split(',') | select('match', '.*\S.*') | list }}"
 
     - name: Get password expiration date for each sudo user
-      shell: chage -l {{ item }} | grep "^Password expires"
-      loop: "{{ sudo_users.stdout_lines }}"
+      shell: chage -l {{ item }} | grep '^Password expires'
+      loop: "{{ sudo_users }}"
       register: chage_results
+      changed_when: false
 
     - name: Print password expiration date for each sudo user
       debug:
