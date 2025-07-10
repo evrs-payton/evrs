@@ -32,12 +32,12 @@
         user_expiry_info: {}
 
    - name: Check password expiration for each valid home user (workaround)
-      include_tasks: check_user_expiry.yml
-      loop: "{{ home_users }}"
-      vars:
-        user: "{{ item }}"
-      loop_control:  # Essential for Ansible 2.9 with include_tasks and loop
-        loop_var: user
+     include_tasks: check_user_expiry.yml
+     loop: "{{ home_users }}"
+     vars:
+       user: "{{ item }}"
+     loop_control:  # Essential for Ansible 2.9 with include_tasks and loop
+       loop_var: user
 
 
    - name: Filter expiring users
