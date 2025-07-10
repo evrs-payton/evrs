@@ -1,5 +1,5 @@
 ---
-
+- name: Check passowrds
   hosts: all
   become: true
   vars:
