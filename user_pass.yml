@@ -68,11 +68,11 @@
      when: expiring_users | length > 0
 
    - name: Display message if no expiring passwords found
-      debug:
-        msg: "No password expirations found among /home users within {{ warning_days }} days."
-      when: expiring_users | length == 0 and home_users | length > 0
+     debug:
+       msg: "No password expirations found among /home users within {{ warning_days }} days."
+     when: expiring_users | length == 0 and home_users | length > 0
 
    - name: Display message if no /home users found
-      debug:
-        msg: "No users with valid home directories in /home found."
-      when: home_users | length == 0
+     debug:
+       msg: "No users with valid home directories in /home found."
+     when: home_users | length == 0
