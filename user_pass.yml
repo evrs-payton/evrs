@@ -1,7 +1,7 @@
 ---
 - name: Check password expiration for users with /home directories
   hosts: all
-  become: true
+  become: yes
   vars:
     warning_days: 15
     admin_email: "usafea6.evrs.support@us.af.mil"  # Replace with your email
@@ -17,7 +17,7 @@
      loop: "{{ lookup('file', '/etc/passwd', splitlines=True) | map('regex_replace', '^(.*?):.*$', '\\1') | list }}" #Extract usernames
      register: all_users
      changed_when: false
-     ignore_errors: true
+     ignore_errors: yes
      
    - name: Fail the play if any user lookup failed
      fail:
