@@ -8,17 +8,22 @@
     smtp_server: "af-smtp.us.af.mil"
     smtp_port: 25
     smtp_sender: "noreply@us.af.mil"
+
   tasks:
     - name: Get users with valid /home directories (using getent)
       getent:
         database: passwd
-        key: "*"  # Get all entries
+        key: "*"
       register: all_users
       changed_when: false
 
     - name: Filter users with /home directories and existing home folders
       set_fact:
         home_users: "{{ all_users.results | selectattr('pw_dir', 'match', '^/home/') | selectattr('pw_dir', 'is_directory') | map(attribute='pw_name') | list }}"
+
+    - name: Initialize user expiry info
+      set_fact:
+        user_expiry_info: {}
 
     - name: Check password expiration for valid home users
       loop: "{{ home_users }}"
@@ -29,12 +34,12 @@
           chage:
             user: "{{ user }}"
           register: chage_result
-          failed_when: false  # Allow chage to fail if the user doesn't exist anymore.
+          failed_when: false
 
         - name: Process expiration date
           set_fact:
-            user_expiry_info: "{{ user_expiry_info | default({}) | combine({ user: {'expiry_date': chage_result.expire_date, 'days_remaining': (chage_result.expire_date | int - ansible_date_time.epoch | int) / 86400 | round | int } }) }}"
-          when: chage_result.expire_date is defined and chage_result.expire_date != -1  # -1 often means never expires
+            user_expiry_info: "{{ user_expiry_info | combine({ user: {'expiry_date': chage_result.expire_date, 'days_remaining': (chage_result.expire_date | int - ansible_date_time.epoch | int) / 86400 | round | int } }) }}"
+          when: chage_result.expire_date is defined and chage_result.expire_date != -1
 
     - name: Filter expiring users
       set_fact:
@@ -48,11 +53,10 @@
 
           {% for user_info in expiring_users %}
           - User: {{ user_info.key }}
-            Expires on: {{ '%Y-%m-%d' | strftime(user_info.value.expiry_date) }}  # Format date for clarity
+            Expires on: {{ '%Y-%m-%d' | strftime(user_info.value.expiry_date) }}
             Days remaining/expired: {{ user_info.value.days_remaining }}
           {% endfor %}
       when: expiring_users | length > 0
-
 
     - name: Send email notification
       mail:
