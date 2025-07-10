@@ -22,7 +22,7 @@
       changed_when: false
 
     - name: Print password expiration date for each sudo user
-      debug:
-        msg: "User: {{ item.item }} | {{ item.stdout }}"
+      ansible.builtin.debug:
+        msg: "{{ item.item }}: {{ item.stdout }}"
       loop: "{{ chage_results.results }}"
 
