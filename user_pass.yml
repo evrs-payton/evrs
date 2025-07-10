@@ -8,79 +8,51 @@
     smtp_server: "af-smtp.us.af.mil"
     smtp_port: 25
     smtp_sender: "noreply@us.af.mil"
-
   tasks:
-    - name: Get users with valid /home directories
-      shell: |
-        # Get users with /home dirs in passwd AND actually existing directories
-        awk -F: '$6 ~ /^\/home\// {print $1}' /etc/passwd | 
-        while read user; do 
-          homedir=$(getent passwd "$user" | cut -d: -f6)
-          [ -d "$homedir" ] && echo "$user"; 
-        done || true  # Force success even if some users fail
-      register: valid_home_users
+    - name: Get users with valid /home directories (using getent)
+      getent:
+        database: passwd
+        key: "*"  # Get all entries
+      register: all_users
       changed_when: false
-      failed_when: false  # Don't fail on non-zero return code
+
+    - name: Filter users with /home directories and existing home folders
+      set_fact:
+        home_users: "{{ all_users.results | selectattr('pw_dir', 'match', '^/home/') | selectattr('pw_dir', 'is_directory') | map(attribute='pw_name') | list }}"
 
     - name: Check password expiration for valid home users
+      loop: "{{ home_users }}"
+      vars:
+        user: "{{ item }}"
       block:
-        - name: Get password expiration info
-          shell: |
-            chage -l {{ item }} 2>/dev/null | 
-            awk -F: '/Password expires/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}'
-          register: password_expiry
-          changed_when: false
-          ignore_errors: yes
-          loop: "{{ valid_home_users.stdout_lines }}"
+        - name: Get password expiration info (using chage)
+          chage:
+            user: "{{ user }}"
+          register: chage_result
+          failed_when: false  # Allow chage to fail if the user doesn't exist anymore.
 
-        - name: Process expiration dates
+        - name: Process expiration date
           set_fact:
-            expiring_users: |
-              {% set result = [] %}
-              {% for user in valid_home_users.stdout_lines %}
-                {% set expiry_data = password_expiry.results[loop.index0] %}
-                {% if expiry_data.stdout != "" and expiry_data.stdout != "never" %}
-                  {% set expiry_date = expiry_data.stdout.strip() %}
-                  {% set expiry_epoch = expiry_date | to_datetime('%b %d, %Y') | int %}
-                  {% set days_remaining = (expiry_epoch - ansible_date_time.epoch|int) / 86400 | round %}
-                  {% if days_remaining <= warning_days %}
-                    {% set _ = result.append({
-                        'user': user,
-                        'expiry_date': expiry_date,
-                        'days_remaining': days_remaining|int,
-                        'status': 'EXPIRED' if days_remaining < 0 else 'WARNING'
-                    }) %}
-                  {% endif %}
-                {% endif %}
-              {% endfor %}
-              {{ result }}
+            user_expiry_info: "{{ user_expiry_info | default({}) | combine({ user: {'expiry_date': chage_result.expire_date, 'days_remaining': (chage_result.expire_date | int - ansible_date_time.epoch | int) / 86400 | round | int } }) }}"
+          when: chage_result.expire_date is defined and chage_result.expire_date != -1  # -1 often means never expires
 
-      when: valid_home_users.stdout_lines | length > 0
+    - name: Filter expiring users
+      set_fact:
+        expiring_users: "{{ user_expiry_info | dict2items | selectattr('value.days_remaining', 'defined') | selectattr('value.days_remaining', 'le', warning_days) | list }}"
 
     - name: Create email body if expiring users found
       set_fact:
         email_body: |
           Password Expiration Report - {{ ansible_hostname }}
           Generated on: {{ ansible_date_time.iso8601 }}
-          
-          {% if expiring_users | selectattr('status', 'equalto', 'EXPIRED') | list | count > 0 %}
-          EXPIRED PASSWORDS:
-          {% for user in expiring_users | selectattr('status', 'equalto', 'EXPIRED') %}
-          - User: {{ user.user }}
-            Expired on: {{ user.expiry_date }}
-            Days expired: {{ -user.days_remaining }}
+
+          {% for user_info in expiring_users %}
+          - User: {{ user_info.key }}
+            Expires on: {{ '%Y-%m-%d' | strftime(user_info.value.expiry_date) }}  # Format date for clarity
+            Days remaining/expired: {{ user_info.value.days_remaining }}
           {% endfor %}
-          {% endif %}
-          
-          {% if expiring_users | selectattr('status', 'equalto', 'WARNING') | list | count > 0 %}
-          PASSWORDS EXPIRING SOON (within {{ warning_days }} days):
-          {% for user in expiring_users | selectattr('status', 'equalto', 'WARNING') %}
-          - User: {{ user.user }}
-            Expires on: {{ user.expiry_date }}
-            Days remaining: {{ user.days_remaining }}
-          {% endfor %}
-          {% endif %}
       when: expiring_users | length > 0
+
 
     - name: Send email notification
       mail:
@@ -95,9 +67,9 @@
     - name: Display message if no expiring passwords found
       debug:
         msg: "No password expirations found among /home users within {{ warning_days }} days."
-      when: expiring_users | length == 0 and valid_home_users.stdout_lines | length > 0
+      when: expiring_users | length == 0 and home_users | length > 0
 
     - name: Display message if no /home users found
       debug:
         msg: "No users with valid home directories in /home found."
-      when: valid_home_users.stdout_lines | length == 0
+      when: home_users | length == 0
