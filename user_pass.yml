@@ -15,18 +15,24 @@
       set_fact:
         sudo_users: "{{ (sudo_group['ansible_facts']['getent_group']['sudo'][2].split(',')) if (sudo_group['ansible_facts']['getent_group']['sudo']|length > 2 and sudo_group['ansible_facts']['getent_group']['sudo'][2] != '') else [] }}"
 
-    - name: Get password expiration date for each sudo user
-      shell: chage -l {{ item }} | grep '^Password expires'
-      loop: "{{ sudo_users }}"
-      register: chage_results
-      changed_when: false
+    -  name: Get password expiration date (ISO format) for each sudo user
+       shell: |
+         exp=$(chage -l {{ item }} | awk -F: '/Password expires/ {print $2}' | xargs)
+         if [ "$exp" = "never" ] || [ -z "$exp" ]; then
+           echo "never"
+         else
+           date -d "$exp" +%Y-%m-%d
+         fi
+       loop: "{{ sudo_users }}"
+       register: chage_results
+       changed_when: false
 
-    - name: Format this host's info for email
+    - name: Build results list for email
       set_fact:
-        host_lines: >-
+        results_lines: >-
           {{
-            host_lines | default([]) +
-            [ item.item + ',' + (item.stdout.split(":")|length > 1 and item.stdout.split(":")[1]|trim or "unknown") ]
+            results_lines | default([]) +
+            [ ansible_hostname + "," + item.item + "," + item.stdout ]
           }}
       loop: "{{ chage_results.results }}"
 
@@ -53,7 +59,7 @@
     - name: Assemble email body from all hosts
       set_fact:
         mail_body: |
-          Hostname,Username,Password Expires
+          Hostname,Username,Password Expires,
           {%- for result in hostvars.values() if 'host_lines' in result %}
           {%- for line in result['host_lines'] %}
           {{ result['inventory_hostname'] }},{{ line.split(',')[0] }},{{ line.split(',')[1] }}
