@@ -9,7 +9,7 @@
     smtp_port: 25
     smtp_sender: "noreply@us.af.mil"  # Replace with your sender address
 
-tasks:
+  tasks:
    - name: Get users with valid /home directories (using getent)
      getent:
        database: passwd
