@@ -46,7 +46,7 @@
 
    - name: Create email body if expiring users found
      set_fact:
-        email_body: |
+       email_body: |
           Password Expiration Report - {{ ansible_hostname }}
           Generated on: {{ ansible_date_time.iso8601 }}
 
@@ -55,17 +55,17 @@
             Expires on: {{ '%Y-%m-%d' | strftime(user_info.value.expiry_date) }}
             Days remaining/expired: {{ user_info.value.days_remaining }}
           {% endfor %}
-      when: expiring_users | length > 0
+     when: expiring_users | length > 0
 
    - name: Send email notification
-      mail:
-        host: "{{ smtp_server }}"
-        port: "{{ smtp_port }}"
-        to: "{{ admin_email }}"
-        subject: "Password Expiration Alert on {{ ansible_hostname }}"
-        body: "{{ email_body }}"
-        from: "{{ smtp_sender }}"
-      when: expiring_users | length > 0
+     mail:
+       host: "{{ smtp_server }}"
+       port: "{{ smtp_port }}"
+       to: "{{ admin_email }}"
+       subject: "Password Expiration Alert on {{ ansible_hostname }}"
+       body: "{{ email_body }}"
+       from: "{{ smtp_sender }}"
+     when: expiring_users | length > 0
 
    - name: Display message if no expiring passwords found
       debug:
