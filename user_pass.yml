@@ -25,11 +25,11 @@
       set_fact:
         user_expiry_info: {}
 
-    - name: Check password expiration for valid home users
+    - name: Check password expiration for valid home users  # loop is OUTSIDE the block
       loop: "{{ home_users }}"
-      vars:
+      vars:  # vars is also OUTSIDE the block
         user: "{{ item }}"
-      block:
+      block: 
         - name: Get password expiration info (using chage)
           chage:
             user: "{{ user }}"
@@ -39,7 +39,7 @@
         - name: Process expiration date
           set_fact:
             user_expiry_info: "{{ user_expiry_info | combine({ user: {'expiry_date': chage_result.expire_date, 'days_remaining': (chage_result.expire_date | int - ansible_date_time.epoch | int) / 86400 | round | int } }) }}"
-          when: chage_result.expire_date is defined and chage_result.expire_date != -1
+          when: chage_result.expire_date is defined and chage_result.expire_date != -1e != -1
 
     - name: Filter expiring users
       set_fact:
