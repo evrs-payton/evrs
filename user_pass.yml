@@ -24,7 +24,7 @@
        all_users_list: "{{ all_users.results }}"
 
    - name: Filter users with /home directories and existing home folders
-      set_fact:
+     set_fact:
         home_users: "{{ all_users.results | selectattr('pw_dir', 'match', '^/home/') | selectattr('pw_dir', 'is_directory') | map(attribute='pw_name') | list }}"
 
    - name: Initialize user expiry info
