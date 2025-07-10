@@ -5,9 +5,9 @@
   gather_facts: no
 
   tasks:
-    - name: Get sudo group entry using getent
+    - name: Get sudo group entry using getent lookup
       set_fact:
-        sudo_group_entry: "{{ lookup('ansible.builtin.getent', 'group', 'sudo') }}"
+        sudo_group_entry: "{{ lookup('getent', 'group', 'sudo') }}"
 
     - name: Extract list of sudo users
       set_fact:
