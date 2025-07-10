@@ -1,13 +1,13 @@
 ---
-- name: Check passowrds
+- name: Check password expiration for users with /home directories
   hosts: all
   become: true
   vars:
     warning_days: 15
-    admin_email: "usafea6.evrs.support@us.af.mil"
-    smtp_server: "af-smtp.us.af.mil"
+    admin_email: "usafea6.evrs.support@us.af.mil"  # Replace with your email
+    smtp_server: "af-smtp.us.af.mil"  # Replace with your SMTP server
     smtp_port: 25
-    smtp_sender: "noreply@us.af.mil"
+    smtp_sender: "noreply@us.af.mil"  # Replace with your sender address
 
   tasks:
     - name: Get users with valid /home directories (using getent)
@@ -25,21 +25,14 @@
       set_fact:
         user_expiry_info: {}
 
-    - name: Check password expiration for valid home users  # loop is OUTSIDE the block
+    - name: Check password expiration for each valid home user (workaround)
+      include_tasks: check_user_expiry.yml
       loop: "{{ home_users }}"
-      vars:  # vars is also OUTSIDE the block
+      vars:
         user: "{{ item }}"
-      block: 
-        - name: Get password expiration info (using chage)
-          chage:
-            user: "{{ user }}"
-          register: chage_result
-          failed_when: false
+      loop_control:  # Essential for Ansible 2.9 with include_tasks and loop
+        loop_var: user
 
-        - name: Process expiration date
-          set_fact:
-            user_expiry_info: "{{ user_expiry_info | combine({ user: {'expiry_date': chage_result.expire_date, 'days_remaining': (chage_result.expire_date | int - ansible_date_time.epoch | int) / 86400 | round | int } }) }}"
-          when: chage_result.expire_date is defined and chage_result.expire_date != -1e != -1
 
     - name: Filter expiring users
       set_fact:
