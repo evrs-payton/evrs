@@ -1,5 +1,4 @@
 ---
-- name: Check password expiration for users with /home directories
   hosts: all
   become: true
   vars:
