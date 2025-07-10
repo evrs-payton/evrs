@@ -23,7 +23,7 @@
      fail:
        msg: "Failed to lookup user {{ item.item }}."
       when: item.rc != 0
-      loop: "{{ all._users.results }}"
+      loop: "{{ all_users.results }}"
 
    - name: set fact all users
      set_fact:
