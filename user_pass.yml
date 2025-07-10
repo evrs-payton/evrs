@@ -6,25 +6,8 @@
 
   tasks:
     - name: Get sudo group entry using getent lookup
-      set_fact:
-        sudo_group_entry: "{{ lookup('getent', 'group', 'sudo') }}"
-
-    - name: Extract list of sudo users
-      set_fact:
-        sudo_users: >-
-          {{
-            sudo_group_entry.split(':') | length > 3
-              and sudo_group_entry.split(':')[3].split(',')
-              or []
-          }}
-
-    - name: Get password expiration date for each sudo user
-      shell: chage -l {{ item }} | grep '^Password expires'
-      loop: "{{ sudo_users }}"
-      register: chage_results
-      changed_when: false
-
-    - name: Print password expiration date for each sudo user
-      debug:
-        msg: "User: {{ item.item }} | {{ item.stdout }}"
-      loop: "{{ chage_results.results }}"
+      getent:
+        database: group 
+        key: sudo
+      register: sudo_group
+      failed_when: sudo_group.rc != 0
