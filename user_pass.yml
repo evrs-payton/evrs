@@ -44,10 +44,10 @@
   hosts: localhost
   gather_facts: no
   vars:
-    mail_to: "youremail@example.com"
-    mail_from: "ansible@example.com"
-    mail_subject: "All Hosts Sudo Users Password Expiry Report"
-    smtp_host: "your.smtp.relay"
+    mail_to: "usafea6.evrs.support@us.af.mil"
+    mail_from: "noreply@us.af.mil"
+    mail_subject: "All Hosts Sudo Users Report"
+    smtp_host: "af-smtp.us.af.mil"
     smtp_port: 25
   tasks:
     - name: Assemble email body from all hosts
@@ -62,10 +62,10 @@
 
     - name: Send the results email via SMTP relay
       mail:
-        host: "{{ af-smtp.us.af.mil }}"
-        port: "{{ 25 }}"
-        to: "{{ usafea6.evrs.support@us.af.mil }}"
-        from: "{{ noreply@us.af.mil }}"
+        host: "{{ smtp_host }}"
+        port: "{{ smtp_port }}"
+        to: "{{ mail_to }}"
+        from: "{{ mail_from }}"
         subject: "{{ mail_subject }}"
         body: "{{ mail_body }}"
         subtype: plain
