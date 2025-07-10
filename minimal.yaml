@@ -1,10 +1,10 @@
 hosts: localhost
 connection: local
 tasks:
-   name: Test Loop
-   loop: "{{[1,2,3]}}"
-   vars:
-   item_value: "{{ item }}"
-   block:
-      debug:
-      msg:"Item: {{ item_value }}"
+   - name: Test Loop
+     loop: "{{[1,2,3]}}"
+     vars:
+     item_value: "{{ item }}"
+     block:
+        debug:
+        msg:"Item: {{ item_value }}"
