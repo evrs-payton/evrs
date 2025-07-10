@@ -7,4 +7,4 @@ tasks:
    item_value: "{{ item }}"
    block:
       debug:
-      msg:"Item: {{ item_value }}
+      msg:"Item: {{ item_value }}"
