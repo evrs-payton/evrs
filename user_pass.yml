@@ -28,7 +28,7 @@
         home_users: "{{ all_users.results | selectattr('pw_dir', 'match', '^/home/') | selectattr('pw_dir', 'is_directory') | map(attribute='pw_name') | list }}"
 
    - name: Initialize user expiry info
-      set_fact:
+     set_fact:
         user_expiry_info: {}
 
    - name: Check password expiration for each valid home user (workaround)
@@ -41,11 +41,11 @@
 
 
    - name: Filter expiring users
-      set_fact:
+     set_fact:
         expiring_users: "{{ user_expiry_info | dict2items | selectattr('value.days_remaining', 'defined') | selectattr('value.days_remaining', 'le', warning_days) | list }}"
 
    - name: Create email body if expiring users found
-      set_fact:
+     set_fact:
         email_body: |
           Password Expiration Report - {{ ansible_hostname }}
           Generated on: {{ ansible_date_time.iso8601 }}
