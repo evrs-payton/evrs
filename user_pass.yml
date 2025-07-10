@@ -10,12 +10,18 @@
     smtp_sender: "noreply@us.af.mil"  # Replace with your sender address
 
   tasks:
-    - name: Get users with valid /home directories (using getent)
-      getent:
-        database: passwd
-        key: "*"
-      register: all_users
-      changed_when: false
+- name: Get users with valid /home directories (using getent)
+  getent:
+    database: passwd
+    key: "{{ item }}"  # Loop over a list of all possible usernames 
+  loop: "{{ lookup('file', '/etc/passwd', splitlines=True) | map('regex_replace', '^(.*?):.*$', '\\1') | list }}" #Extract usernames
+  register: all_users
+  changed_when: false
+  failed_when: "'{{ item }}' not in all_users.results|map(attribute='pw_name')" #fail only if the user doesn't exist
+
+- name: set fact all users
+  set_fact:
+    all_users_list: "{{ all_users.results }}"
 
     - name: Filter users with /home directories and existing home folders
       set_fact:
