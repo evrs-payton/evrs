@@ -1,0 +1,11 @@
+---
+- name: Get password expiration info (using chage)
+  chage:
+    user: "{{ user }}"  # Use the looped user variable
+  register: chage_result
+  failed_when: false
+
+- name: Process expiration date
+  set_fact:
+    user_expiry_info: "{{ user_expiry_info | combine({ user: {'expiry_date': chage_result.expire_date, 'days_remaining': (chage_result.expire_date | int - ansible_date_time.epoch | int) / 86400 | round | int } }) }}"
+  when: chage_result.expire_date is defined and chage_result.expire_date != -1
