@@ -61,7 +61,7 @@
           {%- endfor %}
 
     - name: Send the results email via SMTP relay
-      community.general.mail:
+      mail:
         host: "{{ af-smtp.us.af.mil }}"
         port: "{{ 25 }}"
         to: "{{ usafea6.evrs.support@us.af.mil }}"
