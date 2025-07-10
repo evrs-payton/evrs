@@ -1,10 +1,24 @@
-hosts: localhost
-connection: local
-tasks:
-   - name: Test Loop
-     loop: "{{[1,2,3]}}"
-     vars:
-     item_value: "{{ item }}"
-     block:
-        debug:
-        msg:"Item: {{ item_value }}"
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Initialize user expiry info (for testing)
+      set_fact:
+        user_expiry_info: {}
+
+    - name: Test loop with mock users
+      loop: "{{ ['user1', 'user2', 'user3'] }}"  # Mock users for testing
+      vars:
+        user: "{{ item }}"
+      block:
+        - name: Mock chage command (for testing)
+          set_fact:  # Replace with actual chage command later
+            chage_result:
+              expire_date: "{{ (ansible_date_time.epoch | int) + (30 * 86400) }}" # Expires in 30 days
+
+        - name: Process expiration date
+          set_fact:
+            user_expiry_info: "{{ user_expiry_info | combine({ user: {'expiry_date': chage_result.expire_date, 'days_remaining': (chage_result.expire_date | int - ansible_date_time.epoch | int) / 86400 | round | int } }) }}"
+
+    - debug:
+        var: user_expiry_info
