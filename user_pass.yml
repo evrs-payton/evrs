@@ -5,9 +5,24 @@
   gather_facts: no
 
   tasks:
-    - name: Get sudo group entry using getent lookup
-      getent:
-        database: group 
+    - name: Get sudo group entry using getent module
+      ansible.builtin.getent:
+        database: group
         key: sudo
       register: sudo_group
-      failed_when: sudo_group.rc != 0
+
+    - name: Extract list of sudo users
+      set_fact:
+        sudo_users: "{{ (sudo_group['ansible_facts']['getent_group']['sudo'][2].split(',')) if (sudo_group['ansible_facts']['getent_group']['sudo']|length > 2 and sudo_group['ansible_facts']['getent_group']['sudo'][2] != '') else [] }}"
+
+    - name: Get password expiration date for each sudo user
+      shell: chage -l {{ item }} | grep '^Password expires'
+      loop: "{{ sudo_users }}"
+      register: chage_results
+      changed_when: false
+
+    - name: Print password expiration date for each sudo user
+      debug:
+        msg: "User: {{ item.item }} | {{ item.stdout }}"
+      loop: "{{ chage_results.results }}"
+
