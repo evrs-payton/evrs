@@ -9,29 +9,29 @@
     smtp_port: 25
     smtp_sender: "noreply@us.af.mil"  # Replace with your sender address
 
-  tasks:
-- name: Get users with valid /home directories (using getent)
-  getent:
-    database: passwd
-    key: "{{ item }}"  # Loop over a list of all possible usernames 
-  loop: "{{ lookup('file', '/etc/passwd', splitlines=True) | map('regex_replace', '^(.*?):.*$', '\\1') | list }}" #Extract usernames
-  register: all_users
-  changed_when: false
-  failed_when: "'{{ item }}' not in all_users.results|map(attribute='pw_name')" #fail only if the user doesn't exist
+tasks:
+   - name: Get users with valid /home directories (using getent)
+     getent:
+       database: passwd
+       key: "{{ item }}"  # Loop over a list of all possible usernames 
+     loop: "{{ lookup('file', '/etc/passwd', splitlines=True) | map('regex_replace', '^(.*?):.*$', '\\1') | list }}" #Extract usernames
+     register: all_users
+     changed_when: false
+     failed_when: "'{{ item }}' not in all_users.results|map(attribute='pw_name')" #fail only if the user doesn't exist
 
-- name: set fact all users
-  set_fact:
-    all_users_list: "{{ all_users.results }}"
+   - name: set fact all users
+     set_fact:
+       all_users_list: "{{ all_users.results }}"
 
-    - name: Filter users with /home directories and existing home folders
+   - name: Filter users with /home directories and existing home folders
       set_fact:
         home_users: "{{ all_users.results | selectattr('pw_dir', 'match', '^/home/') | selectattr('pw_dir', 'is_directory') | map(attribute='pw_name') | list }}"
 
-    - name: Initialize user expiry info
+   - name: Initialize user expiry info
       set_fact:
         user_expiry_info: {}
 
-    - name: Check password expiration for each valid home user (workaround)
+   - name: Check password expiration for each valid home user (workaround)
       include_tasks: check_user_expiry.yml
       loop: "{{ home_users }}"
       vars:
@@ -40,11 +40,11 @@
         loop_var: user
 
 
-    - name: Filter expiring users
+   - name: Filter expiring users
       set_fact:
         expiring_users: "{{ user_expiry_info | dict2items | selectattr('value.days_remaining', 'defined') | selectattr('value.days_remaining', 'le', warning_days) | list }}"
 
-    - name: Create email body if expiring users found
+   - name: Create email body if expiring users found
       set_fact:
         email_body: |
           Password Expiration Report - {{ ansible_hostname }}
@@ -57,7 +57,7 @@
           {% endfor %}
       when: expiring_users | length > 0
 
-    - name: Send email notification
+   - name: Send email notification
       mail:
         host: "{{ smtp_server }}"
         port: "{{ smtp_port }}"
@@ -67,12 +67,12 @@
         from: "{{ smtp_sender }}"
       when: expiring_users | length > 0
 
-    - name: Display message if no expiring passwords found
+   - name: Display message if no expiring passwords found
       debug:
         msg: "No password expirations found among /home users within {{ warning_days }} days."
       when: expiring_users | length == 0 and home_users | length > 0
 
-    - name: Display message if no /home users found
+   - name: Display message if no /home users found
       debug:
         msg: "No users with valid home directories in /home found."
       when: home_users | length == 0
