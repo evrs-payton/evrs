@@ -52,15 +52,12 @@
   tasks:
     - name: Assemble email body from all hosts
       set_fact:
-        mail_body: |-
+        mail_body: |
           Hostname,Username,Password Expires
-          {%- for host in ansible_play_hosts_all %}
-          {%- set hostvars_ref = hostvars[host] %}
-          {%- if 'host_lines' in hostvars_ref %}
-          {%- for line in hostvars_ref['host_lines'] %}
-          {{ host }},{{ line.split(',')[0] }},{{ line.split(',')[1] }}
+          {%- for result in hostvars.values() if 'host_lines' in result %}
+          {%- for line in result['host_lines'] %}
+          {{ result['inventory_hostname'] }},{{ line.split(',')[0] }},{{ line.split(',')[1] }}
           {%- endfor %}
-          {%- endif %}
           {%- endfor %}
 
 
