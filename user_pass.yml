@@ -15,36 +15,24 @@
       set_fact:
         sudo_users: "{{ (sudo_group['ansible_facts']['getent_group']['sudo'][2].split(',')) if (sudo_group['ansible_facts']['getent_group']['sudo']|length > 2 and sudo_group['ansible_facts']['getent_group']['sudo'][2] != '') else [] }}"
 
-    -  name: Get password expiration date (ISO format) for each sudo user
-       shell: |
-         exp=$(chage -l {{ item }} | awk -F: '/Password expires/ {print $2}' | xargs)
-         if [ "$exp" = "never" ] || [ -z "$exp" ]; then
-           echo "never"
-         else
-           date -d "$exp" +%Y-%m-%d
-         fi
-       loop: "{{ sudo_users }}"
-       register: chage_results
-       changed_when: false
+    - name: Get password expiration date (ISO format) for each sudo user
+      shell: |
+        exp=$(chage -l {{ item }} | awk -F: '/Password expires/ {print $2}' | xargs)
+        if [ "$exp" = "never" ] || [ -z "$exp" ]; then
+          echo "never"
+        else
+          date -d "$exp" +%Y-%m-%d
+        fi
+      loop: "{{ sudo_users }}"
+      register: chage_results
+      changed_when: false
 
-    - name: Build results list for email
+    - name: Build sudo expiry results for this host
       set_fact:
-        results_lines: >-
+        sudo_expiry_results: >-
           {{
-            results_lines | default([]) +
-            [ ansible_hostname + "," + item.item + "," + item.stdout ]
+            sudo_users | zip(chage_results.results | map(attribute='stdout') | list) | map('list') | map('join', ',') | list
           }}
-      loop: "{{ chage_results.results }}"
-
-    - name: Set fact for all hosts
-      set_fact:
-        host_result: "{{ ansible_hostname }},{{ host_lines | default([]) | join(';') }}"
-
-    - name: Add host result to global results
-      set_fact:
-        all_results: "{{ all_results | default([]) + [host_result] }}"
-      delegate_to: localhost
-      run_once: true
 
 - name: Send consolidated email with all hosts' sudo user expiry info
   hosts: localhost
@@ -56,18 +44,19 @@
     smtp_host: "af-smtp.us.af.mil"
     smtp_port: 25
   tasks:
-    - name: Assemble email body from all hosts
+    - name: Build email body from all hosts
       set_fact:
-        mail_body: |
-          Hostname,Username,Password Expires,
-          {%- for result in hostvars.values() if 'host_lines' in result %}
-          {%- for line in result['host_lines'] %}
-          {{ result['inventory_hostname'] }},{{ line.split(',')[0] }},{{ line.split(',')[1] }}
-          {%- endfor %}
+        mail_body: |-
+          Hostname,Username,Password Expires
+          {%- for host in groups['all'] %}
+            {%- if hostvars[host]['sudo_expiry_results'] is defined %}
+              {%- for line in hostvars[host]['sudo_expiry_results'] %}
+                {{ host }},{{ line }}
+              {%- endfor %}
+            {%- endif %}
           {%- endfor %}
 
-
-    - name: Send the results email via SMTP relay
+    - name: Send results email via SMTP relay
       mail:
         host: "{{ smtp_host }}"
         port: "{{ smtp_port }}"
@@ -76,4 +65,3 @@
         subject: "{{ mail_subject }}"
         body: "{{ mail_body }}"
         subtype: plain
-
