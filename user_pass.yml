@@ -40,7 +40,7 @@
   vars:
     mail_to: "usafea6.evrs.support@us.af.mil"
     mail_from: "noreply@us.af.mil"
-    mail_subject: "All Hosts Sudo Users Report"
+    mail_subject: "User Report"
     smtp_host: "af-smtp.us.af.mil"
     smtp_port: 25
   tasks:
