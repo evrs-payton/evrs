@@ -30,7 +30,7 @@
         port: "{{ smtp_port }}"
         to: "{{ email_to }}"
         from: "{{ email_from }}"
-        subject: "⚠️ Reboot Required on {{ ansible_hostname }}"
+        subject: "Reboot Required on {{ ansible_hostname }}"
         body: |
           Hello team,
 
