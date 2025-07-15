@@ -46,7 +46,7 @@
   tasks:
     - name: Build email body from all hosts
       set_fact:
-        mail_body: |-
+        mail_body:|-
 Hostname,Username,Password_Expires
 {% for host in groups['all'] %}
 {% if hostvars[host]['sudo_expiry_results'] is defined %}
