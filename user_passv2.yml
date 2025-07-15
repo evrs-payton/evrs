@@ -1,0 +1,28 @@
+- hosts: localhost
+  gather_facts: false
+  vars:
+    demo_results:
+      server1:
+        - "user1,2024-07-25"
+        - "user2,never"
+      server2:
+        - "user3,2024-08-01"
+  tasks:
+    - name: Build CSV lines as a list
+      set_fact:
+        csv_lines: >-
+          {{
+            ['Hostname,Username,Password_Expires'] +
+            [
+              host ~ ',' ~ item
+              for host in demo_results
+              for item in demo_results[host]
+            ]
+          }}
+
+    - name: Join CSV lines into body
+      set_fact:
+        mail_body: "{{ csv_lines | join('\n') }}"
+
+    - debug:
+        var: mail_body
