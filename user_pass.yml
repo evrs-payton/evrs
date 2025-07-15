@@ -51,7 +51,7 @@
           {%- for host in groups['all'] %}
             {%- if hostvars[host]['sudo_expiry_results'] is defined %}
               {%- for line in hostvars[host]['sudo_expiry_results'] %}
-        {{ host }},{{ line }}
+          {{ host }},{{ line }}
               {%- endfor %}
             {%- endif %}
           {%- endfor %}
