@@ -47,13 +47,13 @@
     - name: Build email body from all hosts
       set_fact:
         mail_body: |-
-          Hostname,Username,Password Expires
+          Hostname,Username,Password_Expires
           {%- for host in groups['all'] %}
-            {%- if hostvars[host]['sudo_expiry_results'] is defined %}
-              {%- for line in hostvars[host]['sudo_expiry_results'] %}
+          {%- if hostvars[host]['sudo_expiry_results'] is defined %}
+          {%- for line in hostvars[host]['sudo_expiry_results'] %}
           {{ host }},{{ line }}
-              {%- endfor %}
-            {%- endif %}
+          {%- endfor %}
+          {%- endif %}
           {%- endfor %}
 
     - name: Send results email via SMTP relay
