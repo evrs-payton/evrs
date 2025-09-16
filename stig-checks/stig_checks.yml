@@ -28,8 +28,16 @@
              | regex_replace('\r', '')
              | regex_replace('\n', ' ')
              | regex_replace('^\s+|\s+$', '') }}
-      ansible.builtin.shell:
-        cmd: "bash -lc {{ sanitized_cmd | quote }}"
+      ansible.builtin.command:
+        argv:
+          - bash
+          - -lc
+          - "{{ sanitized_cmd }}"
+      environment:
+        SYSTEMD_PAGER: ""
+        SYSTEMD_COLORS: "0"
+        LC_ALL: "C"
+        LANG: "C"
       register: cmd_out
       loop: "{{ commands }}"
       loop_control:
@@ -52,8 +60,8 @@
             'command': item.item.Command,
             'notes': item.item.Notes,
             'rc': item.rc | default(-1),
-            'stdout': (item.stdout | default('')),
-            'stderr': (item.stderr | default(''))
+            'stdout': (item.stdout if (item.stdout is defined and (item.stdout | length) > 0) else ((item.stdout_lines | default([])) | join('\n'))),
+            'stderr': (item.stderr if (item.stderr is defined and (item.stderr | length) > 0) else ((item.stderr_lines | default([])) | join('\n')))
           }
         ] }}"
       loop: "{{ cmd_out.results | default([]) }}"
