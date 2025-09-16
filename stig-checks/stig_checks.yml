@@ -1,6 +1,6 @@
 ---
 - name: Run Ubuntu STIG manual check commands and collect results
-  hosts: targets
+  hosts: all
   gather_facts: false
   become: true
 
