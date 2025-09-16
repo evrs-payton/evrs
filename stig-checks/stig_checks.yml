@@ -31,13 +31,14 @@
       ansible.builtin.command:
         argv:
           - bash
-          - -lc
-          - "{{ sanitized_cmd }}"
+          - -c
+          - "set -o pipefail; {{ sanitized_cmd }}"
       environment:
         SYSTEMD_PAGER: ""
         SYSTEMD_COLORS: "0"
         LC_ALL: "C"
         LANG: "C"
+        BASH_ENV: ""
       register: cmd_out
       loop: "{{ commands }}"
       loop_control:

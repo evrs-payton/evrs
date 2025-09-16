@@ -1,0 +1,63 @@
+- name: Harden system with STIG checks
+  hosts: all
+  become: yes
+  tasks:
+    - name: Find systemd unit files
+      find:
+        paths: /lib/systemd/system
+        file_type: file
+      register: systemd_units
+
+    - name: Fix permissions on systemd unit files
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop: "{{ systemd_units.files }}"
+      when: systemd_units.matched > 0
+
+    - name: Find binaries not owned by root
+      find:
+        paths:
+          - /bin
+          - /sbin
+          - /usr/bin
+          - /usr/sbin
+          - /usr/local/bin
+          - /usr/local/sbin
+        file_type: file
+        recurse: yes
+      register: binaries
+
+    - name: Correct ownership of non-root-owned binaries
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+      loop: "{{ binaries.files }}"
+      when: item.uid != 0 or item.gid != 0
+
+    - name: Install SSSD and related packages (Debian/Ubuntu)
+      apt:
+        name:
+          - sssd
+          - sssd-tools
+          - libpam-sss
+          - libnss-sss
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install SSSD and related packages (RHEL/CentOS/Rocky)
+      yum:
+        name:
+          - sssd
+          - sssd-tools
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Ensure sssd service is enabled and running
+      service:
+        name: sssd
+        state: started
+        enabled: yes
