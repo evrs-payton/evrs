@@ -36,24 +36,9 @@
         label: "{{ item.RuleID }}"
       ignore_errors: true
       changed_when: false
+      failed_when: false
 
-    - name: Debug sanitized command string (JSON shows hidden chars if any)
-      ansible.builtin.debug:
-        msg: "{{ sanitized_cmd | to_json }}"
-      loop: "{{ commands }}"
-      loop_control:
-        label: "{{ item.RuleID }}"
-      vars:
-        sanitized_cmd: >-
-          {{ item.Command
-             | regex_replace('\r', '')
-             | regex_replace('\n', ' ')
-             | regex_replace('^\s+|\s+$', '') }}
-
-    - name: Debug raw command execution results
-      ansible.builtin.debug:
-        var: cmd_out
-      when: cmd_out is defined
+    # Debug tasks removed for quieter output
 
     - name: Initialize results list
       ansible.builtin.set_fact:
