@@ -22,7 +22,13 @@
 
   tasks:
     - name: Run each STIG check command
-      ansible.builtin.shell: "{{ item.Command | trim }}"
+      vars:
+        sanitized_cmd: >-
+          {{ item.Command
+             | regex_replace('\r', '')
+             | regex_replace('\n', ' ')
+             | regex_replace('^\s+|\s+$', '') }}
+      ansible.builtin.shell: "{{ sanitized_cmd }}"
       args:
         executable: /bin/bash
       register: cmd_out
@@ -31,6 +37,19 @@
         label: "{{ item.RuleID }}"
       ignore_errors: true
       changed_when: false
+
+    - name: Debug sanitized command string (JSON shows hidden chars if any)
+      ansible.builtin.debug:
+        msg: "{{ sanitized_cmd | to_json }}"
+      loop: "{{ commands }}"
+      loop_control:
+        label: "{{ item.RuleID }}"
+      vars:
+        sanitized_cmd: >-
+          {{ item.Command
+             | regex_replace('\r', '')
+             | regex_replace('\n', ' ')
+             | regex_replace('^\s+|\s+$', '') }}
 
     - name: Debug raw command execution results
       ansible.builtin.debug:
