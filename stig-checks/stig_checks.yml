@@ -22,9 +22,8 @@
 
   tasks:
     - name: Run each STIG check command
-      ansible.builtin.shell: |
-        set -o pipefail
-        {{ item.Command }}
+      ansible.builtin.shell: >-
+        set -o pipefail && {{ item.Command }}
       args:
         executable: /bin/bash
       register: cmd_out
