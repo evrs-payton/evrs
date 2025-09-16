@@ -1,0 +1,27 @@
+[
+{% for c in commands %}
+  {
+    "rule": {{ c.RuleID | to_json }},
+    "command": {{ c.Command | to_json }},
+    "notes": {{ c.Notes | to_json }},
+    "hosts": [
+    {% for h in groups['all'] %}
+      {
+        "host": {{ h | to_json }},
+        {% set match_list = (hostvars[h].host_results | default([]) | selectattr('command', 'equalto', c.Command) | list) %}
+        {% if match_list | length > 0 %}
+          {% set r = match_list[0] %}
+          "rc": {{ (r.rc | default(-1)) | to_json }},
+          "stdout": {{ (r.stdout | default('')) | to_json }},
+          "stderr": {{ (r.stderr | default('')) | to_json }}
+        {% else %}
+          "rc": -1,
+          "stdout": "",
+          "stderr": ""
+        {% endif %}
+      }{% if not loop.last %},{% endif %}
+    {% endfor %}
+    ]
+  }{% if not loop.last %},{% endif %}
+{% endfor %}
+]
