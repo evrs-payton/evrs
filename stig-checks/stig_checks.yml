@@ -71,7 +71,7 @@
       run_once: true
       become: false
       ansible.builtin.template:
-        src: "/home/evrs-admin/git/evrs/stig-checks/templates/aggregated_results.json.j2"
+        src: "{{ playbook_dir }}/templates/aggregated_results.json.j2"
         dest: "{{ results_dir }}/stig_results_aggregated.json"
         mode: "0644"
 
