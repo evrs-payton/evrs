@@ -1,0 +1,55 @@
+---
+- name: Run Ubuntu STIG manual check commands and collect results
+  hosts: targets
+  gather_facts: false
+  become: true
+
+  vars_files:
+    - commands.json
+
+  vars:
+    results_dir: "./results"
+
+  pre_tasks:
+    - name: Ensure results directory exists on controller
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.file:
+        path: "{{ results_dir }}"
+        state: directory
+        mode: "0755"
+
+  tasks:
+    - name: Run each STIG check command
+      ansible.builtin.shell: |
+        set -o pipefail
+        {{ item.Command }}
+      args:
+        executable: /bin/bash
+      register: cmd_out
+      loop: "{{ commands }}"
+      loop_control:
+        label: "{{ item.RuleID }}"
+      ignore_errors: true
+
+    - name: Assemble structured results per host
+      ansible.builtin.set_fact:
+        host_results: >-
+          {{ cmd_out.results
+          | json_query('[].{rule: item.RuleID, command: item.Command, notes: item.Notes, rc: rc, stdout: stdout, stderr: stderr}') }}
+
+    - name: Write results to controller as JSON
+      delegate_to: localhost
+      run_once: false
+      vars:
+        ts: "20250915_140305"
+      ansible.builtin.copy:
+        content: "{{ host_results | to_nice_json }}"
+        dest: "{{ results_dir }}/stig_results_{{ inventory_hostname }}_20250915_140305.json"
+        mode: "0644"
+
+    - name: Also write results to the remote host (optional)
+      ansible.builtin.copy:
+        content: "{{ host_results | to_nice_json }}"
+        dest: "/tmp/stig_results.json"
+        mode: "0644"

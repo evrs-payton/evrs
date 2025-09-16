@@ -1,0 +1,279 @@
+{
+  "commands": [
+    {
+      "RuleID": "SV-238206r958518",
+      "Command": "grep sudo /etc/group",
+      "Notes": "Verify the sudo group has only members who should have access to security functions"
+    },
+    {
+      "RuleID": "SV-238215r958908",
+      "Command": "sudo dpkg -l | grep openssh",
+      "Notes": "Verify the SSH package is installed"
+    },
+    {
+      "RuleID": "SV-238215r958908",
+      "Command": "sudo systemctl status sshd.service | egrep -i \"(active|loaded)\"",
+      "Notes": "Verify the \"sshd.service\" is loaded and active with the following command"
+    },
+    {
+      "RuleID": "SV-238380r991589",
+      "Command": "sudo systemctl status ctrl-alt-del.target",
+      "Notes": "Check that the \"ctrl-alt-del.target\" (otherwise also known as reboot.target) is not active"
+    },
+    {
+      "RuleID": "SV-274857r1101692",
+      "Command": "grep -i ldap_user_certificate /etc/sssd/sssd.conf",
+      "Notes": "Verify that authenticated certificates are mapped to the appropriate user group in the \"/etc/sssd/sssd.conf\" file"
+    },
+    {
+      "RuleID": "SV-238205r958482",
+      "Command": "awk -F \":\" 'list[$3]++{print $1, $3}' /etc/passwd",
+      "Notes": "Verify the Ubuntu operating system contains no duplicate User IDs (UIDs) for interactive users"
+    },
+    {
+      "RuleID": "SV-238207r1069086",
+      "Command": "sudo grep -E \"\\bTMOUT=[0-9]+\" /etc/bash.bashrc /etc/profile.d/*",
+      "Notes": "Check that the \"TMOUT\" environment variable is set in the \"/etc/bash.bashrc\" file or in any file inside the \"/etc/profile.d/\" directory"
+    },
+    {
+      "RuleID": "SV-238243r958424",
+      "Command": "sudo grep '^action_mail_acct = root' /etc/audit/auditd.conf",
+      "Notes": "Verify that the SA and ISSO (at a minimum) are notified in the event of an audit processing failure"
+    },
+    {
+      "RuleID": "SV-238245r958434",
+      "Command": "sudo grep -iw log_file /etc/audit/auditd.conf",
+      "Notes": "Determine where the audit logs are stored"
+    },
+    {
+      "RuleID": "SV-238245r958434",
+      "Command": "sudo stat -c \"%n %a\" /var/log/audit/*",
+      "Notes": "Using the path of the directory containing the audit logs, determine if the audit log files have a mode of \"0600\" or less"
+    },
+    {
+      "RuleID": "SV-238246r958434",
+      "Command": "sudo grep -iw log_file /etc/audit/auditd.conf",
+      "Notes": "Determine where the audit logs are stored"
+    },
+    {
+      "RuleID": "SV-238246r958434",
+      "Command": "sudo stat -c \"%n %U\" /var/log/audit/*",
+      "Notes": "Using the path of the directory containing the audit logs, determine if the audit log files are owned by the \"root\" user"
+    },
+    {
+      "RuleID": "SV-238246r958434",
+      "Command": "sudo grep -iw log_group /etc/audit/auditd.conf",
+      "Notes": "Determine where the audit logs are stored"
+    },
+    {
+      "RuleID": "SV-238246r958434",
+      "Command": "sudo stat -c \"%n %G\" /var/log/audit/*",
+      "Notes": "Using the path of the directory containing the audit log files, determine if the audit log files are owned by the \"root\" group"
+    },
+    {
+      "RuleID": "SV-238303r991567",
+      "Command": "egrep '(\\/sbin\\/(audit|au))' /etc/aide/aide.conf",
+      "Notes": "Check the selection lines that AIDE is configured to add/check"
+    },
+    {
+      "RuleID": "SV-238309r958846",
+      "Command": "sudo auditctl -l | grep sudo.log",
+      "Notes": "Check the currently configured audit rules"
+    },
+    {
+      "RuleID": "SV-238324r1069955",
+      "Command": "grep -E -r '^(auth,authpriv\\.\\*|daemon\\.\\*)' /etc/rsyslog.*",
+      "Notes": "Check that remote access methods are being logged"
+    },
+    {
+      "RuleID": "SV-238328r958480",
+      "Command": "sudo ufw show raw",
+      "Notes": "Check the firewall configuration for any unnecessary or prohibited functions, ports, protocols, and/or services"
+    },
+    {
+      "RuleID": "SV-238329r1015153",
+      "Command": "sudo passwd -S root",
+      "Notes": "Verify the Ubuntu operating system prevents direct logins to the root account"
+    },
+    {
+      "RuleID": "SV-238334r958550",
+      "Command": "systemctl is-active kdump.service",
+      "Notes": "Verify that kernel core dumps are disabled"
+    },
+    {
+      "RuleID": "SV-238344r991559",
+      "Command": "find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d -exec stat -c \"%n %a\" '{}' \\;",
+      "Notes": "Verify the system commands directories have mode 0755 or less"
+    },
+    {
+      "RuleID": "SV-238345r991559",
+      "Command": "sudo find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d -exec stat -c \"%n %U\" '{}' \\;",
+      "Notes": "Verify the system commands directories are owned by root"
+    },
+    {
+      "RuleID": "SV-238346r991559",
+      "Command": "sudo find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d -exec stat -c \"%n %G\" '{}' \\;",
+      "Notes": "Verify the system commands directories are group-owned by root"
+    },
+    {
+      "RuleID": "SV-238347r1106136",
+      "Command": "sudo find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' -perm /022 -exec stat -c \"%n %a\" {} +",
+      "Notes": "Check that the systemwide shared library files have mode 0755 or less permissive"
+    },
+    {
+      "RuleID": "SV-238348r991560",
+      "Command": "sudo find /lib /lib64 /usr/lib -perm /022 -type d -exec stat -c \"%n %a\" '{}' \\;",
+      "Notes": "Verify the system-wide shared library directories \"/lib\", \"/lib64\", and \"/usr/lib have mode 0755 or less permissive"
+    },
+    {
+      "RuleID": "SV-238349r1106138",
+      "Command": "sudo find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' ! -user root -exec stat -c \"%n %U\" {} +",
+      "Notes": "Verify the systemwide shared library files contained in the directories \"/lib\", \"/lib64\", \"/usr/lib\", and \"/usr/lib64\" are owned by root"
+    },
+    {
+      "RuleID": "SV-238350r991560",
+      "Command": "sudo find /lib /usr/lib /lib64 ! -user root -type d -exec stat -c \"%n %U\" '{}' \\;",
+      "Notes": "Verify the system-wide shared library directories \"/lib\", \"/lib64\", and \"/usr/lib\" are owned by root"
+    },
+    {
+      "RuleID": "SV-238351r1106140",
+      "Command": "sudo find /lib /lib64 /usr/lib /usr/lib64 -type f -name '*.so*' ! -group root -exec stat -c \"%n %G\" {} +",
+      "Notes": "Verify the systemwide shared library files contained in the directories \"/lib\", \"/lib64\", \"/usr/lib\", and \"/usr/lib64\" are group owned by root"
+    },
+    {
+      "RuleID": "SV-238352r991560",
+      "Command": "sudo find /lib /usr/lib /lib64 ! -group root -type d -exec stat -c \"%n %G\" '{}' \\;",
+      "Notes": "Verify the system-wide library directories \"/lib\", \"/lib64\", and \"/usr/lib\" are group-owned by root"
+    },
+    {
+      "RuleID": "SV-238355r958672",
+      "Command": "systemctl is-enabled ufw",
+      "Notes": "Verify the Uncomplicated Firewall is enabled on the system"
+    },
+    {
+      "RuleID": "SV-238355r958672",
+      "Command": "systemctl is-active ufw",
+      "Notes": "Verify the Uncomplicated Firewall is active on the system"
+    },
+    {
+      "RuleID": "SV-238364r958868",
+      "Command": "nan",
+      "Notes": "Verify the directory containing the root certificates for the Ubuntu operating system contains certificate files for DoD PKI-established certificate authorities by iterating over all files in the \"/etc/ssl/certs\" directory and checking if, at least one, has the subject matching \"DOD ROOT CA\""
+    },
+    {
+      "RuleID": "SV-238372r958948",
+      "Command": "sudo grep SILENTREPORTS /etc/default/aide",
+      "Notes": "Verify that Advanced Intrusion Detection Environment (AIDE) notifies the System Administrator  when anomalies in the operation of any security functions are discovered"
+    },
+    {
+      "RuleID": "SV-238374r991593",
+      "Command": "systemctl status ufw.service | grep -i \"active:\"",
+      "Notes": "systemctl status ufw.service | grep -i \"active:\""
+    },
+    {
+      "RuleID": "SV-238377r991560",
+      "Command": "sudo find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f -exec stat -c \"%n %U\" '{}' \\;",
+      "Notes": "Verify the system commands contained in the following directories are owned by root"
+    },
+    {
+      "RuleID": "SV-238378r991560",
+      "Command": "sudo find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type f ! -perm /2000 -exec stat -c \"%n %G\" '{}' \\;",
+      "Notes": "Verify the system commands contained in the following directories are group-owned by root"
+    },
+    {
+      "RuleID": "SV-255912r991554",
+      "Command": "sudo /usr/sbin/sshd -dd 2>&1 | awk '/filename/ {print $4}' | tr -d '\\r' | tr '\\n' ' ' | xargs sudo grep -iH '^\\s*kexalgorithms'",
+      "Notes": "Verify the SSH server is configured to use only FIPS-validated key exchange algorithms"
+    },
+    {
+      "RuleID": "SV-274853r1106127",
+      "Command": "dpkg -l | grep sssd",
+      "Notes": "Verify Ubuntu 20.04 LTS has the packages required for multifactor authentication installed"
+    },
+    {
+      "RuleID": "SV-274854r1106129",
+      "Command": "sudo systemctl is-enabled sssd",
+      "Notes": "Verify the \"sssd.service\" is enabled"
+    },
+    {
+      "RuleID": "SV-274854r1106129",
+      "Command": "sudo systemctl is-active sssd",
+      "Notes": "Verify the \"sssd.service\" is active"
+    },
+    {
+      "RuleID": "SV-274855r1107182",
+      "Command": "sudo grep -A 1 '^\\[sssd\\]' /etc/sssd/sssd.conf",
+      "Notes": "Verify the pam service is listed under [sssd]"
+    },
+    {
+      "RuleID": "SV-274855r1107182",
+      "Command": "sudo grep -A 1 '^\\[pam]' /etc/sssd/sssd.conf",
+      "Notes": "Verify the pam service is set to use pam for smart card authentication in the [pam] section of /etc/sssd/sssd.conf"
+    },
+    {
+      "RuleID": "SV-274855r1107182",
+      "Command": "sudo grep certificate_verification /etc/sssd/sssd.conf",
+      "Notes": "Verify \"ca\" is enabled in \"certificate_verification\""
+    },
+    {
+      "RuleID": "SV-274858r1106125",
+      "Command": "sudo grep -iwR 'ALL' /etc/sudoers /etc/sudoers.d/ | grep -v '#'",
+      "Notes": "Verify the operating system restricts privilege elevation to authorized personnel with the following command"
+    },
+    {
+      "RuleID": "SV-274859r1101698",
+      "Command": "sudo egrep -iR 'NOPASSWD' /etc/sudoers /etc/sudoers.d/",
+      "Notes": "Verify that \"/etc/sudoers\" has no occurrences of \"NOPASSWD\""
+    },
+    {
+      "RuleID": "SV-238234r1015152",
+      "Command": "grep -i remember /etc/pam.d/common-password",
+      "Notes": "Verify the Ubuntu operating system prevents passwords from being reused for a minimum of five generations"
+    },
+    {
+      "RuleID": "SV-238307r971542",
+      "Command": "sudo grep ^space_left_action /etc/audit/auditd.conf",
+      "Notes": "Verify the Ubuntu operating system notifies the SA and ISSO (at a minimum) when allocated audit record storage volume reaches 75% of the repository maximum audit record storage capacity"
+    },
+    {
+      "RuleID": "SV-238307r971542",
+      "Command": "sudo grep ^space_left /etc/audit/auditd.conf",
+      "Notes": "Verify the Ubuntu operating system notifies the SA and ISSO (at a minimum) when allocated audit record storage volume reaches 75% of the repository maximum audit record storage capacity"
+    },
+    {
+      "RuleID": "SV-238307r971542",
+      "Command": "sudo grep ^action_mail_acct /etc/audit/auditd.conf",
+      "Notes": "Verify the Ubuntu operating system notifies the SA and ISSO (at a minimum) when allocated audit record storage volume reaches 75% of the repository maximum audit record storage capacity"
+    },
+    {
+      "RuleID": "SV-238308r958788",
+      "Command": "timedatectl status | grep -i \"time zone\"",
+      "Notes": "To verify the time zone is configured to use UTC or GMT"
+    },
+    {
+      "RuleID": "SV-238321r959008",
+      "Command": "sudo ls /etc/cron.weekly",
+      "Notes": "Verify there is a script that offloads audit data and that script runs weekly."
+    },
+    {
+      "RuleID": "SV-238362r958828",
+      "Command": "sudo grep offline_credentials_expiration /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf",
+      "Notes": "Verify that PAM prohibits the use of cached authentications after one day"
+    },
+    {
+      "RuleID": "SV-255913r958524",
+      "Command": "sudo sysctl kernel.dmesg_restrict",
+      "Notes": "Verify the operating system is configured to restrict access to the kernel message buffer"
+    },
+    {
+      "RuleID": "SV-255913r958524",
+      "Command": "sudo grep -r kernel.dmesg_restrict /run/sysctl.d/* /etc/sysctl.d/* /usr/local/lib/sysctl.d/* /usr/lib/sysctl.d/* /lib/sysctl.d/* /etc/sysctl.conf 2> /dev/null",
+      "Notes": "Check that the configuration files are present to enable this kernel parameter"
+    },
+    {
+      "RuleID": "SV-274856r1106132",
+      "Command": "sudo grep offline_credentials_expiration /etc/sssd/sssd.conf /etc/sssd/conf.d/*.conf",
+      "Notes": "Verify that PAM prohibits the use of cached authentications after one day"
+    }
+  ]
+}
