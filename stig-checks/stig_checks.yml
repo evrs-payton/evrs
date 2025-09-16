@@ -22,7 +22,7 @@
 
   tasks:
     - name: Run each STIG check command
-      ansible.builtin.shell: "{{ item.Command }}"
+      ansible.builtin.shell: "{{ item.Command | trim }}"
       args:
         executable: /bin/bash
       register: cmd_out
