@@ -14,6 +14,7 @@
     - name: Ensure results directory exists on controller
       delegate_to: localhost
       run_once: true
+      become: false
       ansible.builtin.file:
         path: "{{ results_dir }}"
         state: directory
@@ -41,6 +42,7 @@
     - name: Write results to controller as JSON
       delegate_to: localhost
       run_once: false
+      become: false
       vars:
         ts: "20250915_140305"
       ansible.builtin.copy:
