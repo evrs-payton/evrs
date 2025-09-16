@@ -30,11 +30,25 @@
         label: "{{ item.RuleID }}"
       ignore_errors: true
 
+    - name: Debug raw command execution results
+      ansible.builtin.debug:
+        var: cmd_out
+      when: cmd_out is defined
+
     - name: Assemble structured results per host
       ansible.builtin.set_fact:
         host_results: >-
-          {{ cmd_out.results
-          | json_query('[].{rule: item.RuleID, command: item.Command, notes: item.Notes, rc: rc, stdout: stdout, stderr: stderr}') }}
+          {{ [
+            {
+              'rule': r.item.RuleID,
+              'command': r.item.Command,
+              'notes': r.item.Notes,
+              'rc': r.rc,
+              'stdout': r.stdout | default(''),
+              'stderr': r.stderr | default('')
+            }
+            for r in (cmd_out.results | default([]))
+          ] }}
 
     - name: Write results to controller as JSON
       delegate_to: localhost
