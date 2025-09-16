@@ -22,13 +22,15 @@
 
   tasks:
     - name: Run each STIG check command
-      ansible.builtin.shell: >-
-        bash -o pipefail -c "{{ item.Command }}"
+      ansible.builtin.shell: "{{ item.Command }}"
+      args:
+        executable: /bin/bash
       register: cmd_out
       loop: "{{ commands }}"
       loop_control:
         label: "{{ item.RuleID }}"
       ignore_errors: true
+      changed_when: false
 
     - name: Debug raw command execution results
       ansible.builtin.debug:
