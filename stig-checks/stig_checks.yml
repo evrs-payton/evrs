@@ -28,9 +28,8 @@
              | regex_replace('\r', '')
              | regex_replace('\n', ' ')
              | regex_replace('^\s+|\s+$', '') }}
-      ansible.builtin.shell: "{{ sanitized_cmd }}"
-      args:
-        executable: /bin/bash
+      ansible.builtin.shell:
+        cmd: "bash -lc {{ sanitized_cmd | quote }}"
       register: cmd_out
       loop: "{{ commands }}"
       loop_control:
@@ -56,20 +55,23 @@
         var: cmd_out
       when: cmd_out is defined
 
-    - name: Assemble structured results per host
+    - name: Initialize results list
       ansible.builtin.set_fact:
-        host_results: >-
-          {{ [
-            {
-              'rule': r.item.RuleID,
-              'command': r.item.Command,
-              'notes': r.item.Notes,
-              'rc': r.rc,
-              'stdout': r.stdout | default(''),
-              'stderr': r.stderr | default('')
-            }
-            for r in (cmd_out.results | default([]))
-          ] }}
+        host_results: []
+
+    - name: Append each command result to results list
+      ansible.builtin.set_fact:
+        host_results: "{{ host_results + [
+          {
+            'rule': item.item.RuleID,
+            'command': item.item.Command,
+            'notes': item.item.Notes,
+            'rc': item.rc | default(-1),
+            'stdout': (item.stdout | default('')),
+            'stderr': (item.stderr | default(''))
+          }
+        ] }}"
+      loop: "{{ cmd_out.results | default([]) }}"
 
     - name: Write results to controller as JSON
       delegate_to: localhost
