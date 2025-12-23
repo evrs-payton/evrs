@@ -75,7 +75,7 @@
         -x {{ snmpv3_priv_protocol }}
         -X {{ snmpv3_priv_password }}
         {{ snmpv3_username }}
-      when: snmpv3_user_count.stdout | int == 0
+      when: snmpv3_user_count.stdout is not defined or snmpv3_user_count.stdout | int == 0
 
     - name: Ensure snmpd is enabled and running
       ansible.builtin.systemd:
