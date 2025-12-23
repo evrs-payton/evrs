@@ -64,17 +64,10 @@
           grep -c "usmUser.*{{ snmpv3_username }}" /var/lib/snmp/snmpd.conf
       register: snmpv3_user_count
       changed_when: false
-      failed_when: false # Task won't fail if grep finds nothing
+      failed_when: false
 
     - name: Create SNMPv3 user (read-only, authPriv)
-      ansible.builtin.command: >
-        net-snmp-create-v3-user
-        -ro
-        -a {{ snmpv3_auth_protocol }}
-        -A {{ snmpv3_auth_password }}
-        -x {{ snmpv3_priv_protocol }}
-        -X {{ snmpv3_priv_password }}
-        {{ snmpv3_username }}
+      ansible.builtin.command: "net-snmp-create-v3-user -ro -a {{ snmpv3_auth_protocol }} -A {{ snmpv3_auth_password }} -x {{ snmpv3_priv_protocol }} -X {{ snmpv3_priv_password }} {{ snmpv3_username }}"
       when: snmpv3_user_count.stdout is not defined or snmpv3_user_count.stdout | int == 0
 
     - name: Ensure snmpd is enabled and running
