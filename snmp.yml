@@ -28,7 +28,7 @@
           - snmp
           - snmpd
           - ufw
-          - libsnmp-dev  # This was the missing package
+          - libsnmp-dev
         state: present
         update_cache: yes
 
@@ -37,20 +37,23 @@
         name: snmpd
         state: stopped
 
-    - name: Configure /etc/snmp/snmpd.conf (SNMPv3 only)
+    - name: Configure /etc/snmp/snmpd.conf (per leadership requirement)
       ansible.builtin.copy:
         dest: /etc/snmp/snmpd.conf
         owner: root
         group: root
         mode: "0644"
         content: |
-          # [ SNMPD configuration content from your original playbook... ]
+          ####################################################################
+          # SNMPD configuration - SNMPv3 for SolarWinds
+          ####################################################################
           agentAddress udp:161
           sysLocation {{ snmp_location }}
           sysContact  {{ snmp_contact }}
-          view   systemonly  included   .1.3.6.1.2.1.1
-          view   systemonly  included   .1.3.6.1.2.1.25.1
-          rouser {{ snmpv3_username }} authPriv -V systemonly
+
+          # Grant the user read-only access to the entire .1 OID tree
+          rouser {{ snmpv3_username }} authPriv .1
+
           dontLogTCPWrappersConnects yes
 
     - name: Check if SNMPv3 user already exists
