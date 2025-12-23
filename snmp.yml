@@ -65,7 +65,10 @@
           dontLogTCPWrappersConnects yes
 
     - name: Check if SNMPv3 user already exists
-      ansible.builtin.shell: "grep -q 'usmUser.*{{ snmpv3_username }}' /var/lib/snmp/snmpd.conf"
+      ansible.builtin.command:
+        cmd: >
+          grep -q "usmUser.*{{ snmpv3_username }}"
+          /var/lib/snmp/snmpd.conf
       register: snmpv3_user_exists
       changed_when: false
       failed_when: false
