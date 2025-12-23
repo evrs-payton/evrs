@@ -22,12 +22,13 @@
           Missing required variables. Provide solarwinds_server_ip, snmpv3_username,
           snmpv3_auth_password, snmpv3_priv_password (Semaphore Variables recommended).
 
-    - name: Install SNMP packages
+    - name: Install SNMP packages and dependencies
       ansible.builtin.apt:
         name:
           - snmp
           - snmpd
           - ufw
+          - libsnmp-dev  # This was the missing package
         state: present
         update_cache: yes
 
@@ -62,7 +63,7 @@
     - name: Create SNMPv3 user (read-only, authPriv)
       ansible.builtin.command:
         argv:
-          - net-snmp-create-v3-user
+          - /usr/bin/net-snmp-create-v3-user
           - -ro
           - -a
           - "{{ snmpv3_auth_protocol }}"
