@@ -2,7 +2,6 @@
 - name: Install and configure SNMPv3 for SolarWinds on Ubuntu (UFW locked down)
   hosts: evrs
   become: true
-
   vars:
     # Defaults / optional
     snmp_location: "Unknown Location"   # override per-host in inventory
@@ -47,31 +46,25 @@
           ####################################################################
           # SNMPD configuration - SNMPv3 for SolarWinds
           ####################################################################
-
           # Listen on UDP 161 (all IPv4). If you want to bind to a mgmt IP only,
           # change to: agentAddress udp:<MGMT_IP>:161
           agentAddress udp:161
-
           sysLocation {{ snmp_location }}
           sysContact  {{ snmp_contact }}
-
           # Restrict what can be read
           view   systemonly  included   .1.3.6.1.2.1.1
           view   systemonly  included   .1.3.6.1.2.1.25.1
-
           # Allow the SNMPv3 user read-only access with auth+privacy
           rouser {{ snmpv3_username }} authPriv -V systemonly
-
           dontLogTCPWrappersConnects yes
 
     - name: Check if SNMPv3 user already exists
       ansible.builtin.command:
         cmd: >
-          grep -q "usmUser.*{{ snmpv3_username }}"
-          /var/lib/snmp/snmpd.conf
-      register: snmpv3_user_exists
+          grep -c "usmUser.*{{ snmpv3_username }}" /var/lib/snmp/snmpd.conf
+      register: snmpv3_user_count
       changed_when: false
-      failed_when: false
+      failed_when: false # Task won't fail if grep finds nothing
 
     - name: Create SNMPv3 user (read-only, authPriv)
       ansible.builtin.command: >
@@ -82,7 +75,7 @@
         -x {{ snmpv3_priv_protocol }}
         -X {{ snmpv3_priv_password }}
         {{ snmpv3_username }}
-      when: snmpv3_user_exists.rc != 0
+      when: snmpv3_user_count.stdout | int == 0
 
     - name: Ensure snmpd is enabled and running
       ansible.builtin.systemd:
