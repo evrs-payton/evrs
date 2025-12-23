@@ -1,6 +1,6 @@
 ---
 - name: Install and configure SNMPv3 for SolarWinds on Ubuntu (UFW locked down)
-  hosts: ubuntu_servers
+  hosts: evrs
   become: true
 
   vars:
