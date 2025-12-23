@@ -4,7 +4,6 @@
   become: true
   vars:
     # Defaults / optional
-    snmp_location: "Unknown Location"   # override per-host in inventory
     snmp_contact: "noc@example.com"     # override via Semaphore if desired
     configure_ufw: true
     snmpv3_auth_protocol: "SHA"
