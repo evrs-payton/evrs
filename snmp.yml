@@ -95,4 +95,17 @@
         state: enabled
       when: configure_ufw | bool
 
-    - name: Allow S
+    - name: Allow SNMP (UDP/161) only from SolarWinds server
+      ansible.builtin.ufw:
+        rule: allow
+        proto: udp
+        port: "161"
+        from_ip: "{{ solarwinds_server_ip }}"
+      when: configure_ufw | bool
+
+    - name: Deny SNMP (UDP/161) from everywhere else
+      ansible.builtin.ufw:
+        rule: deny
+        proto: udp
+        port: "161"
+      when: configure_ufw | bool
